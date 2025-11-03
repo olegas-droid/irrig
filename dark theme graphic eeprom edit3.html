@@ -3,508 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Irrigation Control System - Simulation</title>
+    <title>Irrigation Control System</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: #0f0f0f; 
-            color: #e0e0e0; 
-            padding: 10px; 
-            line-height: 1.5;
-            background: linear-gradient(135deg, #0a0a0a, #1a1a2e);
-            min-height: 100vh;
-        }
-        .header { 
-            background: linear-gradient(135deg, #1a1a1a, #2a2a2a); 
-            color: white; 
-            padding: 15px; 
-            border-radius: 10px; 
-            margin-bottom: 10px; 
-            text-align: center; 
-            border: 1px solid #333; 
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-        .header::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #27ae60, #3498db, #e74c3c);
-        }
-        .status-grid { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 8px; 
-            margin-bottom: 10px; 
-        }
-        .status-card { 
-            background: #1a1a1a; 
-            padding: 12px; 
-            border-radius: 8px; 
-            font-size: 14px; 
-            border: 1px solid #333; 
-            transition: all 0.3s ease;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .status-card:hover { 
-            background: #252525; 
-            transform: translateY(-2px); 
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        .status-card .value {
-            font-weight: bold;
-            font-size: 16px;
-        }
-        .quick-actions { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr 1fr; 
-            gap: 8px; 
-            margin-bottom: 10px; 
-        }
-        .quick-btn { 
-            padding: 15px; 
-            border: none; 
-            border-radius: 8px; 
-            font-size: 16px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            transition: all 0.3s ease; 
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .quick-btn:hover { 
-            transform: translateY(-2px); 
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); 
-        }
-        .btn-green { 
-            background: #27ae60; 
-            color: white; 
-        }
-        .btn-green:hover { 
-            background: #2ecc71; 
-        }
-        .btn-red { 
-            background: #c0392b; 
-            color: white; 
-        }
-        .btn-red:hover { 
-            background: #e74c3c; 
-        }
-        .btn-gray { 
-            background: #34495e; 
-            color: white; 
-        }
-        .btn-gray:hover { 
-            background: #4a6b8a; 
-        }
-        .btn-blue {
-            background: #2980b9;
-            color: white;
-        }
-        .btn-blue:hover {
-            background: #3498db;
-        }
-        .tabs { 
-            display: grid; 
-            grid-template-columns: repeat(5, 1fr); 
-            gap: 5px; 
-            margin-bottom: 10px; 
-        }
-        .tab { 
-            padding: 12px; 
-            border: 1px solid #333; 
-            background: #1a1a1a; 
-            border-radius: 8px; 
-            font-size: 14px; 
-            color: #e0e0e0; 
-            cursor: pointer; 
-            transition: all 0.3s ease; 
-            text-align: center;
-        }
-        .tab:hover { 
-            background: #2a2a2a; 
-        }
-        .tab.active { 
-            background: #3498db; 
-            color: white; 
-            border-color: #3498db; 
-        }
-        .tabcontent { 
-            display: none; 
-            background: #1a1a1a; 
-            padding: 15px; 
-            border-radius: 8px; 
-            margin-bottom: 10px; 
-            border: 1px solid #333; 
-            animation: fadeIn 0.5s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .section { 
-            background: #252525; 
-            padding: 15px; 
-            margin: 10px 0; 
-            border-radius: 8px; 
-            border: 1px solid #333; 
-        }
-        input, select { 
-            width: 100%; 
-            padding: 12px; 
-            margin: 5px 0; 
-            border: 1px solid #444; 
-            border-radius: 5px; 
-            font-size: 16px; 
-            background: #1a1a1a; 
-            color: #e0e0e0; 
-        }
-        input:focus, select:focus { 
-            border-color: #3498db; 
-            outline: none; 
-            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-        }
-        .progress-bar { 
-            background: #2a2a2a; 
-            border-radius: 10px; 
-            margin: 10px 0; 
-            overflow: hidden; 
-            height: 20px; 
-            position: relative;
-        }
-        .progress-fill { 
-            height: 100%; 
-            background: linear-gradient(90deg, #2ecc71, #3498db); 
-            border-radius: 10px; 
-            transition: width 0.5s ease; 
-            position: relative;
-            overflow: hidden;
-        }
-        .progress-fill::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            background-image: linear-gradient(
-                -45deg,
-                rgba(255, 255, 255, 0.2) 25%,
-                transparent 25%,
-                transparent 50%,
-                rgba(255, 255, 255, 0.2) 50%,
-                rgba(255, 255, 255, 0.2) 75%,
-                transparent 75%,
-                transparent
-            );
-            background-size: 50px 50px;
-            animation: move 2s linear infinite;
-            overflow: hidden;
-        }
-        @keyframes move {
-            0% { background-position: 0 0; }
-            100% { background-position: 50px 50px; }
-        }
-        .chart-container { 
-            background: #1a1a1a; 
-            padding: 15px; 
-            border-radius: 8px; 
-            margin: 10px 0; 
-            text-align: center; 
-            border: 1px solid #333; 
-            overflow: auto; 
-        }
-        .time-input { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr 1fr; 
-            gap: 5px; 
-        }
-        h4 { 
-            color: #3498db; 
-            margin-bottom: 10px; 
-            border-bottom: 1px solid #333; 
-            padding-bottom: 5px; 
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        label { 
-            color: #b0b0b0; 
-            display: block; 
-            margin-bottom: 5px; 
-        }
-        .input-group { 
-            margin-bottom: 15px; 
-        }
-        .input-group label { 
-            margin-bottom: 8px; 
-            display: block; 
-        }
-        .grid-2 { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 10px; 
-        }
-        .grid-3 { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr 1fr; 
-            gap: 10px; 
-        }
-        .unit { 
-            color: #888; 
-            font-size: 12px; 
-            margin-left: 5px; 
-        }
-        .sensor-value { 
-            font-weight: bold; 
-        }
-        .moisture-value { color: #3498db; }
-        .temp-value { color: #e74c3c; }
-        .pwec-value { color: #2ecc71; }
-        .ec-value { color: #9b59b6; }
-        .water-value { color: #3498db; }
-        .epsilon-value { color: #f39c12; }
-        .phase-value { color: #1abc9c; }
-        
-        .legend { 
-            display: flex; 
-            justify-content: center; 
-            margin: 10px 0; 
-            flex-wrap: wrap; 
-        }
-        .legend-item { 
-            display: flex; 
-            align-items: center; 
-            margin: 5px 15px; 
-        }
-        .legend-color { 
-            width: 15px; 
-            height: 15px; 
-            border-radius: 3px; 
-            margin-right: 5px; 
-        }
-        .moisture-color { 
-            background: #3498db; 
-        }
-        .pwec-color { 
-            background: #2ecc71; 
-        }
-        .target-line { 
-            stroke: #e74c3c; 
-            stroke-width: 1; 
-            stroke-dasharray: 5,5; 
-        }
-        .notification { 
-            position: fixed; 
-            top: 20px; 
-            right: 20px; 
-            padding: 15px 20px; 
-            background: #2c3e50; 
-            color: white; 
-            border-radius: 5px; 
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); 
-            z-index: 1000; 
-            transform: translateX(150%); 
-            transition: transform 0.3s ease; 
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .notification.show { 
-            transform: translateX(0); 
-        }
-        .notification.success { 
-            background: #27ae60; 
-        }
-        .notification.error { 
-            background: #c0392b; 
-        }
-        .notification.info { 
-            background: #3498db; 
-        }
-        .notification.warning {
-            background: #f39c12;
-        }
-        .chart-tooltip { 
-            position: absolute; 
-            background: rgba(0, 0, 0, 0.8); 
-            color: white; 
-            padding: 8px 12px; 
-            border-radius: 4px; 
-            font-size: 12px; 
-            pointer-events: none; 
-            opacity: 0; 
-            transition: opacity 0.3s; 
-            z-index: 100; 
-        }
-        .chart-tooltip.show { 
-            opacity: 1; 
-        }
-        .data-point { 
-            cursor: pointer; 
-            transition: r 0.2s; 
-        }
-        .data-point:hover { 
-            r: 5; 
-        }
-        .chart-controls { 
-            display: flex; 
-            justify-content: space-between; 
-            margin-bottom: 15px; 
-            flex-wrap: wrap; 
-            gap: 10px; 
-        }
-        .chart-zoom { 
-            display: flex; 
-            gap: 5px; 
-        }
-        .zoom-btn { 
-            padding: 5px 10px; 
-            background: #34495e; 
-            color: white; 
-            border: none; 
-            border-radius: 3px; 
-            cursor: pointer; 
-        }
-        .zoom-btn:hover { 
-            background: #4a6b8a; 
-        }
-        
-        .sensor-animation {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #2ecc71;
-            margin-right: 5px;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
-        }
-        
-        .pump-active {
-            animation: pump 0.5s infinite alternate;
-        }
-        
-        @keyframes pump {
-            from { transform: scale(1); }
-            to { transform: scale(1.05); }
-        }
-        
-        .lights-active {
-            animation: glow 1.5s infinite alternate;
-        }
-        
-        @keyframes glow {
-            from { box-shadow: 0 0 5px #f1c40f; }
-            to { box-shadow: 0 0 20px #f1c40f, 0 0 30px #f1c40f; }
-        }
-        
-        .system-status {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        
-        .status-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #2ecc71;
-            animation: status-pulse 2s infinite;
-        }
-        
-        @keyframes status-pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        
-        .water-droplet {
-            display: inline-block;
-            animation: drip 3s infinite;
-            color: #3498db;
-        }
-        
-        @keyframes drip {
-            0% { transform: translateY(0); opacity: 1; }
-            50% { transform: translateY(5px); opacity: 0.7; }
-            100% { transform: translateY(0); opacity: 1; }
-        }
-        
-        .system-time {
-            font-family: 'Courier New', monospace;
-            letter-spacing: 1px;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f0f0f; color: #e0e0e0; padding: 10px; line-height: 1.5; }
+        .header { background: linear-gradient(135deg, #1a1a1a, #2a2a2a); color: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; text-align: center; border: 1px solid #333; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
+        .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .status-card { background: #1a1a1a; padding: 12px; border-radius: 8px; font-size: 14px; border: 1px solid #333; transition: all 0.3s ease; }
+        .status-card:hover { background: #252525; transform: translateY(-2px); }
+        .quick-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .quick-btn { padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); }
+        .quick-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); }
+        .btn-green { background: #27ae60; color: white; }
+        .btn-green:hover { background: #2ecc71; }
+        .btn-red { background: #c0392b; color: white; }
+        .btn-red:hover { background: #e74c3c; }
+        .btn-gray { background: #34495e; color: white; }
+        .btn-gray:hover { background: #4a6b8a; }
+        .tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-bottom: 10px; }
+        .tab { padding: 12px; border: 1px solid #333; background: #1a1a1a; border-radius: 8px; font-size: 14px; color: #e0e0e0; cursor: pointer; transition: all 0.3s ease; }
+        .tab:hover { background: #2a2a2a; }
+        .tab.active { background: #3498db; color: white; border-color: #3498db; }
+        .tabcontent { display: none; background: #1a1a1a; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333; }
+        .section { background: #252525; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #333; }
+        input, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #444; border-radius: 5px; font-size: 16px; background: #1a1a1a; color: #e0e0e0; }
+        input:focus, select:focus { border-color: #3498db; outline: none; }
+        .progress-bar { background: #2a2a2a; border-radius: 10px; margin: 10px 0; overflow: hidden; height: 20px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #2ecc71, #3498db); border-radius: 10px; transition: width 0.5s ease; }
+        .chart-container { background: #1a1a1a; padding: 15px; border-radius: 8px; margin: 10px 0; text-align: center; border: 1px solid #333; overflow: auto; }
+        .time-input { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+        h4 { color: #3498db; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        label { color: #b0b0b0; display: block; margin-bottom: 5px; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { margin-bottom: 8px; display: block; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .unit { color: #888; font-size: 12px; margin-left: 5px; }
+        .sensor-value { font-weight: bold; color: #2ecc71; }
+        .legend { display: flex; justify-content: center; margin: 10px 0; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; margin: 5px 15px; }
+        .legend-color { width: 15px; height: 15px; border-radius: 3px; margin-right: 5px; }
+        .moisture-color { background: #3498db; }
+        .pwec-color { background: #2ecc71; }
+        .target-line { stroke: #e74c3c; stroke-width: 1; stroke-dasharray: 5,5; }
+        .notification { position: fixed; top: 20px; right: 20px; padding: 15px 20px; background: #2c3e50; color: white; border-radius: 5px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); z-index: 1000; transform: translateX(150%); transition: transform 0.3s ease; }
+        .notification.show { transform: translateX(0); }
+        .notification.success { background: #27ae60; }
+        .notification.error { background: #c0392b; }
+        .notification.info { background: #3498db; }
+        .chart-tooltip { position: absolute; background: rgba(0, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 100; }
+        .chart-tooltip.show { opacity: 1; }
+        .data-point { cursor: pointer; transition: r 0.2s; }
+        .data-point:hover { r: 5; }
+        .chart-controls { display: flex; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .chart-zoom { display: flex; gap: 5px; }
+        .zoom-btn { padding: 5px 10px; background: #34495e; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        .zoom-btn:hover { background: #4a6b8a; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h2>🌱 Irrigation Control System - Simulation</h2>
-        <div id="currentTime" class="system-time">--:--:--</div>
-        <div class="system-status">
-            <div class="status-indicator"></div>
-            <span>System Running - All Sensors Active</span>
-        </div>
+        <h2>🌱 Irrigation Control System</h2>
+        <div id="currentTime">--:--:--</div>
     </div>
     
     <div class="status-grid">
-        <div class="status-card">
-            <span>Moisture: <span class="sensor-animation"></span></span>
-            <span id="moisture" class="sensor-value moisture-value">--%</span>
-        </div>
-        <div class="status-card">
-            <span>Temperature:</span>
-            <span id="temperature" class="sensor-value temp-value">--°C</span>
-        </div>
-        <div class="status-card">
-            <span>PWEC:</span>
-            <span id="poreEC" class="sensor-value pwec-value">-- dS/m</span>
-        </div>
-        <div class="status-card">
-            <span>Bulk EC:</span>
-            <span id="bulkEC" class="sensor-value ec-value">-- µS/cm</span>
-        </div>
-        <div class="status-card">
-            <span>Water Today: <span class="water-droplet">💧</span></span>
-            <span id="waterToday" class="sensor-value water-value">-- L</span>
-        </div>
-        <div class="status-card">
-            <span>Epsilon B:</span>
-            <span id="epsilonB" class="sensor-value epsilon-value">--</span>
-        </div>
-        <div class="status-card" style="grid-column: 1 / -1; text-align: center;">
-            <span>Phase:</span>
-            <span id="currentPhase" class="sensor-value phase-value">--</span>
-        </div>
+        <div class="status-card">Moisture: <span id="moisture" class="sensor-value">--%</span></div>
+        <div class="status-card">Temperature: <span id="temperature" class="sensor-value">--°C</span></div>
+        <div class="status-card">PWEC: <span id="poreEC" class="sensor-value">-- dS/m</span></div>
+        <div class="status-card">Bulk EC: <span id="bulkEC" class="sensor-value">-- µS/cm</span></div>
+        <div class="status-card">Water Today: <span id="waterToday" class="sensor-value">-- L</span></div>
+        <div class="status-card">Epsilon B: <span id="epsilonB" class="sensor-value">--</span></div>
+        <div class="status-card" style="grid-column: 1 / -1; text-align: center;">Phase: <span id="currentPhase" class="sensor-value">--</span></div>
     </div>
     
     <div class="quick-actions">
-        <button class="quick-btn btn-red" id="pumpBtn">
-            <span>💧</span> PUMP OFF
-        </button>
-        <button class="quick-btn btn-red" id="lightsBtn">
-            <span>💡</span> LIGHTS OFF
-        </button>
-        <button class="quick-btn btn-red" id="serviceBtn">
-            <span>🔧</span> SERVICE OFF
-        </button>
+        <button class="quick-btn btn-red" id="pumpBtn">PUMP OFF</button>
+        <button class="quick-btn btn-red" id="lightsBtn">LIGHTS OFF</button>
+        <button class="quick-btn btn-red" id="serviceBtn">SERVICE OFF</button>
     </div>
     
     <div class="tabs">
@@ -517,11 +93,11 @@
     
     <div id="control" class="tabcontent" style="display:block">
         <div class="section">
-            <h4>🌿 Moisture Control</h4>
+            <h4>Moisture Control</h4>
             <div class="input-group">
-                <label>Current Moisture: <span id="controlMoisture" class="sensor-value moisture-value">--%</span></label>
-                <label>Highest Moisture: <span id="controlHighest" class="sensor-value moisture-value">--%</span></label>
-                <label>Target Moisture: <span id="controlTarget" class="sensor-value moisture-value">--%</span></label>
+                <label>Current Moisture: <span id="controlMoisture" class="sensor-value">--%</span></label>
+                <label>Highest Moisture: <span id="controlHighest" class="sensor-value">--%</span></label>
+                <label>Target Moisture: <span id="controlTarget" class="sensor-value">--%</span></label>
             </div>
             <div class="progress-bar">
                 <div id="progressBar" class="progress-fill" style="width: 0%;"></div>
@@ -538,10 +114,10 @@
         </div>
 
         <div class="section">
-            <h4>🌱 Growth Mode</h4>
+            <h4>Growth Mode</h4>
             <div class="input-group">
                 <label>Current Mode: <span id="currentMode" class="sensor-value">--</span></label>
-                <label>Irrigation Phase: <span id="currentIrrigationPhase" class="sensor-value phase-value">--</span></label>
+                <label>Irrigation Phase: <span id="currentIrrigationPhase" class="sensor-value">--</span></label>
             </div>
             <div class="grid-2">
                 <button class="quick-btn btn-green" onclick="switchToVegetative()">Vegetative</button>
@@ -552,7 +128,7 @@
     
     <div id="chart" class="tabcontent">
         <div class="section">
-            <h4>📊 Soil Analytics Chart</h4>
+            <h4>Soil Analytics Chart</h4>
             <div class="chart-controls">
                 <div>
                     <label for="timeRange">Select Time Range</label>
@@ -593,7 +169,7 @@
     
     <div id="wifi" class="tabcontent">
         <div class="section">
-            <h4>📶 Current Status</h4>
+            <h4>Current Status</h4>
             <div class="input-group">
                 <label>WiFi Mode: <span id="currentWifiMode" class="sensor-value">AP</span></label>
                 <label>Connection Status: <span id="currentWifiStatus" class="sensor-value">AP: Irrigation_System</span></label>
@@ -602,7 +178,7 @@
         </div>
         
         <div class="section">
-            <h4>🌐 Network Setup</h4>
+            <h4>Network Setup</h4>
             <div class="input-group">
                 <label for="wifi_ssid">WiFi Name (SSID)</label>
                 <input type="text" id="wifi_ssid" placeholder="Enter WiFi name">
@@ -624,7 +200,7 @@
 
     <div id="settings" class="tabcontent">
         <div class="section">
-            <h4>⚙️ Basic Settings</h4>
+            <h4>Basic Settings</h4>
             <div class="input-group">
                 <label for="moisture_target">Moisture Target <span class="unit">(%)</span></label>
                 <input type="number" step="0.1" id="moisture_target" value="85.0">
@@ -644,7 +220,7 @@
         </div>
 
         <div class="section">
-            <h4>💧 Shot Settings</h4>
+            <h4>Shot Settings</h4>
             <div class="input-group">
                 <label for="p1_shot">P1 Shot Duration <span class="unit">(seconds)</span></label>
                 <input type="number" step="0.1" id="p1_shot" value="150.0">
@@ -664,7 +240,7 @@
         </div>
 
         <div class="section">
-            <h4>⏰ Delay Settings</h4>
+            <h4>Delay Settings</h4>
             <div class="input-group">
                 <label for="delay_before_veg">Delay Before Veg Lights Off <span class="unit">(hours)</span></label>
                 <input type="number" step="0.1" id="delay_before_veg" value="1.0">
@@ -684,7 +260,7 @@
         </div>
 
         <div class="section">
-            <h4>🔬 Advanced Settings</h4>
+            <h4>Advanced Settings</h4>
             <div class="input-group">
                 <label for="epsilon_offset">Epsilon Offset <span class="unit">(dimensionless)</span></label>
                 <input type="number" step="0.01" id="epsilon_offset" value="4.1">
@@ -702,12 +278,12 @@
 
     <div id="time" class="tabcontent">
         <div class="section">
-            <h4>🕒 Current Time</h4>
-            <div id="currentTimeDisplay" class="system-time" style="text-align: center; font-size: 24px; font-weight: bold; color: #2ecc71;">--:--:--</div>
+            <h4>Current Time</h4>
+            <div id="currentTimeDisplay" style="text-align: center; font-size: 24px; font-weight: bold; color: #2ecc71;">--:--:--</div>
         </div>
 
         <div class="section">
-            <h4>⏱️ Set Manual Time</h4>
+            <h4>Set Manual Time</h4>
             <div class="input-group">
                 <label>Set Time Manually</label>
                 <div class="time-input">
@@ -729,13 +305,13 @@
         </div>
 
         <div class="section">
-            <h4>💡 Light Schedule</h4>
+            <h4>Light Schedule</h4>
             <div class="input-group">
                 <label>Lights On Time</label>
                 <div class="grid-2">
                     <div>
                         <label for="lights_hour">Hour</label>
-                        <input type="number" id="lights_hour" min="0" max="23" value="9" placeholder="Hour">
+                        <input type="number" id="lights_hour" min="0" max="23" value="0" placeholder="Hour">
                     </div>
                     <div>
                         <label for="lights_minute">Minute</label>
@@ -748,77 +324,141 @@
                 <input type="number" step="0.1" id="dark_hours" value="12.0" placeholder="Dark Hours">
             </div>
             <div class="input-group">
-                <label>Calculated Lights Off Time: <span class="sensor-value">21:00</span></label>
+                <label>Calculated Lights Off Time: <span id="calculatedLightsOff" class="sensor-value">12:00</span></label>
             </div>
             <button class="quick-btn btn-green" onclick="saveTimeSettings()" style="width: 100%;">Save Light Schedule</button>
         </div>
     </div>
     
-    <div id="notification" class="notification">
-        <span>🔔</span>
-        <span id="notificationText">Notification message</span>
-    </div>
+    <div id="notification" class="notification"></div>
     <div id="chartTooltip" class="chart-tooltip"></div>
 
     <script>
-        // System state simulation
-        const systemState = {
-            moisture: 72.5,
-            temperature: 22.3,
-            bulkEC: 1250,
-            poreEC: 1.25,
-            epsilonB: 12.8,
+        // Simulation State
+        let simulationState = {
+            moisture: 75.0,
+            temperature: 22.5,
+            bulkEC: 1200,
+            poreEC: 1.2,
+            epsilonB: 12.5,
             highestMoisture: 85.0,
             pumpOn: false,
             lightsOn: false,
             serviceMode: false,
             maintenance: false,
             generative: false,
-            moistureTarget: 85.0,
-            appliedWater: 5.7,
+            dailyWaterApplied: 2.5,
             currentSessionWater: 0,
             wateringActive: false,
-            currentPhase: "P1",
-            currentTime: "14:23:45",
-            wifiMode: "AP",
-            wifiStatus: "AP: Irrigation_System",
-            ipAddress: "192.168.4.1"
+            moistureTarget: 85.0,
+            epsilonOffset: 4.1,
+            
+            // Time simulation - manual time control
+            manualBase: Date.now() - (12 * 3600000), // Start at 12:00:00
+            daysBase: Date.now(),
+            virtualDay: 0,
+            
+            // Light schedule
+            lightsOnTime: "00:00:00",
+            darkHours: 12.0,
+            cachedTimes: {
+                lights_on_hour: 0,
+                lights_on_minute: 0,
+                lights_off_hour: 12,
+                lights_off_minute: 0,
+                parsed: true
+            },
+            
+            historyData: [],
+            simulationStartTime: Date.now()
         };
 
-        let chartScale = 1;
-        let currentTab = 'control';
-        let chartData = [];
-        let simulatedTime = new Date();
-        simulatedTime.setHours(14, 23, 45);
-        
-        // Initialize the interface
-        document.addEventListener('DOMContentLoaded', function() {
-            updateStatus();
-            startSensorSimulation();
-            startTimeSimulation();
-            generateChartData();
-            refreshChart();
+        // Constants
+        const ONE_SECOND = 1000;
+        const ONE_MINUTE = 60000;
+        const ONE_HOUR = 3600000;
+        const ONE_DAY = 86400000;
+
+        // Calculate light off time EXACTLY like Arduino code
+        function calculateLightOffTime() {
+            const lights_hour = parseInt(document.getElementById('lights_hour').value) || 0;
+            const lights_minute = parseInt(document.getElementById('lights_minute').value) || 0;
+            const dark_hours = parseFloat(document.getElementById('dark_hours').value) || 12.0;
             
-            // Add event listeners
-            document.getElementById('pumpBtn').addEventListener('click', togglePump);
-            document.getElementById('lightsBtn').addEventListener('click', toggleLights);
-            document.getElementById('serviceBtn').addEventListener('click', toggleService);
-        });
+            // EXACT Arduino calculation
+            const light_hours = 24.0 - dark_hours;
+            
+            // Use bitwise OR with 0 to match Arduino's (int) casting exactly
+            const light_minutes_float = light_hours * 60;
+            const light_minutes_int = (light_minutes_float) | 0; // This exactly matches (int) casting
+            
+            const lights_off_total_minutes = (lights_hour * 60 + lights_minute) + light_minutes_int;
+            const lights_off_hour = (lights_off_total_minutes / 60) | 0;
+            const lights_off_minute = lights_off_total_minutes % 60;
+            
+            // Handle 24-hour wrap-around
+            const final_lights_off_hour = lights_off_hour % 24;
+            
+            // Update display
+            document.getElementById('calculatedLightsOff').textContent = 
+                `${final_lights_off_hour.toString().padStart(2, '0')}:${lights_off_minute.toString().padStart(2, '0')}`;
+            
+            // Update simulation state
+            simulationState.cachedTimes.lights_on_hour = lights_hour;
+            simulationState.cachedTimes.lights_on_minute = lights_minute;
+            simulationState.cachedTimes.lights_off_hour = final_lights_off_hour;
+            simulationState.cachedTimes.lights_off_minute = lights_off_minute;
+            simulationState.darkHours = dark_hours;
+            
+            console.log(`Arduino Calculation:`);
+            console.log(`  Lights ON: ${lights_hour}:${lights_minute.toString().padStart(2, '0')}`);
+            console.log(`  Dark hours: ${dark_hours}, Light hours: ${light_hours}`);
+            console.log(`  Light minutes: ${light_minutes_float} -> ${light_minutes_int} (truncated)`);
+            console.log(`  Total minutes: ${lights_off_total_minutes}`);
+            console.log(`  Lights OFF: ${final_lights_off_hour.toString().padStart(2, '0')}:${lights_off_minute.toString().padStart(2, '0')}`);
+        }
+
+        // Safe time difference calculation
+        function safeTimeDifference(current, previous) {
+            return (current >= previous) ? (current - previous) : (Number.MAX_SAFE_INTEGER - previous + current + 1);
+        }
+
+        // Update time
+        function updateTime() {
+            const current_millis = Date.now();
+            const total_millis = safeTimeDifference(current_millis, simulationState.manualBase);
+            const total_seconds = Math.floor(total_millis / ONE_SECOND);
+            
+            const hours = Math.floor(total_seconds / 3600) % 24;
+            const minutes = Math.floor((total_seconds % 3600) / 60);
+            const seconds = total_seconds % 60;
+            
+            simulationState.virtualDay = Math.floor(safeTimeDifference(current_millis, simulationState.days_base) / ONE_DAY);
+            
+            const time_str = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('currentTime').textContent = time_str;
+            document.getElementById('currentTimeDisplay').textContent = time_str;
+        }
+
+        // Set manual time
+        function setManualTime(h, m, s) {
+            simulationState.manualBase = Date.now() - (h * ONE_HOUR + m * ONE_MINUTE + s * ONE_SECOND);
+        }
+
+        let chartScale = 1;
         
         function openTab(tabName) {
             document.querySelectorAll('.tabcontent').forEach(tab => tab.style.display = 'none');
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.getElementById(tabName).style.display = 'block';
             event.currentTarget.classList.add('active');
-            currentTab = tabName;
             if (tabName === 'chart') refreshChart();
         }
         
         function showNotification(message, type = 'info') {
             const notification = document.getElementById('notification');
-            const notificationText = document.getElementById('notificationText');
-            
-            notificationText.textContent = message;
+            notification.textContent = message;
             notification.className = 'notification ' + type;
             notification.classList.add('show');
             
@@ -827,427 +467,6 @@
             }, 3000);
         }
 
-        function updateStatus() {
-            // Update all status displays with current system state
-            document.getElementById('currentTime').textContent = systemState.currentTime;
-            document.getElementById('moisture').textContent = systemState.moisture.toFixed(1) + '%';
-            document.getElementById('temperature').textContent = systemState.temperature.toFixed(1) + '°C';
-            document.getElementById('poreEC').textContent = systemState.poreEC.toFixed(3) + ' dS/m';
-            document.getElementById('bulkEC').textContent = systemState.bulkEC.toFixed(0) + ' µS/cm';
-            document.getElementById('waterToday').textContent = systemState.appliedWater.toFixed(1) + ' L';
-            document.getElementById('epsilonB').textContent = systemState.epsilonB.toFixed(1);
-            document.getElementById('currentPhase').textContent = systemState.currentPhase;
-            document.getElementById('currentTimeDisplay').textContent = systemState.currentTime;
-            
-            document.getElementById('controlMoisture').textContent = systemState.moisture.toFixed(1) + '%';
-            document.getElementById('controlHighest').textContent = systemState.highestMoisture.toFixed(1) + '%';
-            document.getElementById('controlTarget').textContent = systemState.moistureTarget.toFixed(1) + '%';
-            document.getElementById('currentMode').textContent = systemState.generative ? 'Generative' : 'Vegetative';
-            document.getElementById('currentIrrigationPhase').textContent = systemState.currentPhase;
-            
-            const progress = Math.min(100, Math.max(0, (systemState.highestMoisture / systemState.moistureTarget) * 100));
-            document.getElementById('progressBar').style.width = progress + '%';
-            document.getElementById('progressText').textContent = progress.toFixed(0) + '%';
-            
-            // Update button states
-            const pumpBtn = document.getElementById('pumpBtn');
-            const lightsBtn = document.getElementById('lightsBtn');
-            const serviceBtn = document.getElementById('serviceBtn');
-            
-            pumpBtn.textContent = systemState.pumpOn ? '💧 PUMP ON' : '💧 PUMP OFF';
-            lightsBtn.textContent = systemState.lightsOn ? '💡 LIGHTS ON' : '💡 LIGHTS OFF';
-            serviceBtn.textContent = systemState.serviceMode ? '🔧 SERVICE ON' : '🔧 SERVICE OFF';
-            
-            pumpBtn.className = systemState.pumpOn ? 'quick-btn btn-green pump-active' : 'quick-btn btn-red';
-            lightsBtn.className = systemState.lightsOn ? 'quick-btn btn-green lights-active' : 'quick-btn btn-red';
-            serviceBtn.className = systemState.serviceMode ? 'quick-btn btn-green' : 'quick-btn btn-red';
-            
-            // Update settings form
-            document.getElementById('moisture_target').value = systemState.moistureTarget;
-            document.getElementById('service_mode').checked = systemState.serviceMode;
-            
-            // Update WiFi status
-            document.getElementById('currentWifiMode').textContent = systemState.wifiMode;
-            document.getElementById('currentWifiStatus').textContent = systemState.wifiStatus;
-            document.getElementById('currentIP').textContent = systemState.ipAddress;
-        }
-        
-        function startSensorSimulation() {
-            // Simulate sensor data changes
-            setInterval(() => {
-                // Random small fluctuations in sensor readings
-                systemState.moisture = Math.max(40, Math.min(95, systemState.moisture + (Math.random() - 0.5) * 0.5));
-                systemState.temperature = Math.max(18, Math.min(28, systemState.temperature + (Math.random() - 0.5) * 0.1));
-                systemState.bulkEC = Math.max(800, Math.min(2000, systemState.bulkEC + (Math.random() - 0.5) * 10));
-                systemState.poreEC = Math.max(0.5, Math.min(2.5, systemState.poreEC + (Math.random() - 0.5) * 0.05));
-                systemState.epsilonB = Math.max(10, Math.min(15, systemState.epsilonB + (Math.random() - 0.5) * 0.1));
-                
-                // Update highest moisture if needed
-                if (systemState.moisture > systemState.highestMoisture) {
-                    systemState.highestMoisture = systemState.moisture;
-                }
-                
-                // Simulate irrigation logic
-                if (!systemState.serviceMode && !systemState.wateringActive) {
-                    const moistureDiff = systemState.moistureTarget - systemState.moisture;
-                    
-                    if (moistureDiff > 5 && Math.random() > 0.7) {
-                        // Simulate automatic watering
-                        startWatering(30);
-                    }
-                }
-                
-                // Update water usage if watering is active
-                if (systemState.wateringActive) {
-                    systemState.currentSessionWater += 0.1;
-                }
-                
-                updateStatus();
-            }, 2000);
-        }
-        
-        function startTimeSimulation() {
-            // Simulate time progression
-            setInterval(() => {
-                simulatedTime.setSeconds(simulatedTime.getSeconds() + 1);
-                
-                const hours = simulatedTime.getHours().toString().padStart(2, '0');
-                const minutes = simulatedTime.getMinutes().toString().padStart(2, '0');
-                const seconds = simulatedTime.getSeconds().toString().padStart(2, '0');
-                
-                systemState.currentTime = `${hours}:${minutes}:${seconds}`;
-                
-                // Update lights based on time (9:00 to 21:00)
-                const currentHour = simulatedTime.getHours();
-                systemState.lightsOn = currentHour >= 9 && currentHour < 21;
-                
-                updateStatus();
-            }, 1000);
-        }
-        
-        function generateChartData() {
-            // Generate simulated historical data
-            chartData = [];
-            const now = new Date();
-            
-            for (let i = 143; i >= 0; i--) {
-                const time = new Date(now.getTime() - i * 10 * 60 * 1000); // 10 minute intervals
-                const hours = time.getHours().toString().padStart(2, '0');
-                const minutes = time.getMinutes().toString().padStart(2, '0');
-                
-                // Generate realistic moisture data with some variation
-                const baseMoisture = 70 + Math.sin(i / 20) * 15;
-                const moisture = Math.max(40, Math.min(95, baseMoisture + (Math.random() - 0.5) * 5));
-                
-                // Generate correlated PWEC data
-                const pwec = Math.max(0.5, Math.min(2.5, 1.5 + (moisture - 70) / 30 + (Math.random() - 0.5) * 0.2));
-                
-                chartData.push({
-                    hours_ago: (143 - i) * 10 / 60,
-                    timestamp: `${hours}:${minutes}`,
-                    moisture: moisture,
-                    pwec: pwec
-                });
-            }
-        }
-        
-        function togglePump() {
-            systemState.pumpOn = !systemState.pumpOn;
-            
-            if (systemState.pumpOn) {
-                startWatering(30);
-                showNotification('Pump activated - Watering started', 'success');
-            } else {
-                systemState.wateringActive = false;
-                systemState.appliedWater += systemState.currentSessionWater;
-                systemState.currentSessionWater = 0;
-                showNotification('Pump deactivated', 'info');
-            }
-            
-            updateStatus();
-        }
-        
-        function toggleLights() {
-            systemState.lightsOn = !systemState.lightsOn;
-            showNotification(`Lights ${systemState.lightsOn ? 'activated' : 'deactivated'}`, 'info');
-            updateStatus();
-        }
-        
-        function toggleService() {
-            systemState.serviceMode = !systemState.serviceMode;
-            showNotification(`Service mode ${systemState.serviceMode ? 'enabled' : 'disabled'}`, 'warning');
-            updateStatus();
-        }
-        
-        function startWatering(duration) {
-            systemState.wateringActive = true;
-            systemState.currentSessionWater = 0;
-            
-            setTimeout(() => {
-                if (systemState.wateringActive) {
-                    systemState.wateringActive = false;
-                    systemState.appliedWater += systemState.currentSessionWater;
-                    systemState.currentSessionWater = 0;
-                    systemState.pumpOn = false;
-                    
-                    // Simulate moisture increase after watering
-                    systemState.moisture = Math.min(95, systemState.moisture + 15);
-                    if (systemState.moisture > systemState.highestMoisture) {
-                        systemState.highestMoisture = systemState.moisture;
-                    }
-                    
-                    showNotification('Watering completed', 'success');
-                    updateStatus();
-                }
-            }, duration * 1000);
-        }
-        
-        function switchToVegetative() {
-            systemState.generative = false;
-            showNotification('Switched to Vegetative mode', 'success');
-            updateStatus();
-        }
-        
-        function switchToGenerative() {
-            systemState.generative = true;
-            showNotification('Switched to Generative mode', 'success');
-            updateStatus();
-        }
-        
-        function setHighestMoisture() {
-            const value = parseFloat(document.getElementById('setHighestValue').value);
-            if (!isNaN(value)) {
-                systemState.highestMoisture = value;
-                showNotification(`Highest moisture set to ${value}%`, 'success');
-                updateStatus();
-            }
-        }
-        
-        function resetHighestMoisture() {
-            systemState.highestMoisture = 0;
-            showNotification('Highest moisture reset to 0%', 'info');
-            updateStatus();
-        }
-        
-        function setTime() {
-            const hour = parseInt(document.getElementById('setHour').value) || 0;
-            const minute = parseInt(document.getElementById('setMinute').value) || 0;
-            const second = parseInt(document.getElementById('setSecond').value) || 0;
-            
-            simulatedTime.setHours(hour, minute, second);
-            
-            const hours = simulatedTime.getHours().toString().padStart(2, '0');
-            const minutes = simulatedTime.getMinutes().toString().padStart(2, '0');
-            const seconds = simulatedTime.getSeconds().toString().padStart(2, '0');
-            
-            systemState.currentTime = `${hours}:${minutes}:${seconds}`;
-            
-            showNotification(`Time set to ${systemState.currentTime}`, 'success');
-            updateStatus();
-        }
-        
-        function saveTimeSettings() {
-            const lights_hour = parseInt(document.getElementById('lights_hour').value) || 9;
-            const lights_minute = parseInt(document.getElementById('lights_minute').value) || 0;
-            const dark_hours = parseFloat(document.getElementById('dark_hours').value) || 12.0;
-            
-            // Calculate lights off time
-            const light_hours = 24.0 - dark_hours;
-            const lights_off_total_minutes = (lights_hour * 60 + lights_minute) + Math.round(light_hours * 60);
-            const lights_off_hour = Math.floor(lights_off_total_minutes / 60) % 24;
-            const lights_off_minute = lights_off_total_minutes % 60;
-            
-            const lights_off_time = `${lights_off_hour.toString().padStart(2, '0')}:${lights_off_minute.toString().padStart(2, '0')}`;
-            
-            document.querySelector('#time .input-group:last-child label:last-child .sensor-value').textContent = lights_off_time;
-            
-            showNotification('Light schedule saved!', 'success');
-        }
-        
-        function scanNetworks() {
-            document.getElementById('scanResults').innerHTML = '<p style="padding: 10px; color: #888;">Scanning...</p>';
-            
-            // Simulate network scanning delay
-            setTimeout(() => {
-                const networks = [
-                    { ssid: 'HomeWiFi', rssi: -45 },
-                    { ssid: 'Office_Network', rssi: -62 },
-                    { ssid: 'NeighborWiFi', rssi: -78 },
-                    { ssid: 'GuestNetwork', rssi: -68 },
-                    { ssid: 'IoT_Devices', rssi: -55 }
-                ];
-                
-                let html = '';
-                networks.forEach(network => {
-                    const strength = Math.min(Math.max(2 * (network.rssi + 100), 0), 100);
-                    html += `<div style="padding: 10px; border-bottom: 1px solid #444; cursor: pointer;" 
-                             onclick="document.getElementById('wifi_ssid').value='${network.ssid}'">
-                              <strong>${network.ssid}</strong><br>
-                              <small>Signal: ${strength}%</small>
-                            </div>`;
-                });
-                document.getElementById('scanResults').innerHTML = html;
-                showNotification('Found ' + networks.length + ' networks', 'info');
-            }, 2000);
-        }
-        
-        function saveWiFiConfig() {
-            const ssid = document.getElementById('wifi_ssid').value;
-            const password = document.getElementById('wifi_password').value;
-            
-            if (ssid) {
-                systemState.wifiMode = "STA";
-                systemState.wifiStatus = `Connected to ${ssid}`;
-                systemState.ipAddress = "192.168.1.105";
-                
-                showNotification(`Connected to ${ssid}`, 'success');
-                updateStatus();
-            } else {
-                showNotification('Please enter a WiFi name', 'error');
-            }
-        }
-        
-        function switchToAPMode() {
-            systemState.wifiMode = "AP";
-            systemState.wifiStatus = "AP: Irrigation_System";
-            systemState.ipAddress = "192.168.4.1";
-            
-            showNotification('Switched to AP mode', 'info');
-            updateStatus();
-        }
-        
-        function saveAllSettings() {
-            systemState.moistureTarget = parseFloat(document.getElementById('moisture_target').value) || 85.0;
-            systemState.serviceMode = document.getElementById('service_mode').checked;
-            
-            showNotification('Settings saved successfully!', 'success');
-            updateStatus();
-        }
-
-        // Chart functions (simplified for static version)
-        function refreshChart() {
-            const timeRange = parseInt(document.getElementById('timeRange').value);
-            generateSimpleChart(timeRange);
-            showNotification('Chart updated for ' + timeRange + ' hours', 'success');
-        }
-        
-        function generateSimpleChart(timeRange) {
-            const container = document.getElementById('chartContainer');
-            const width = 600;
-            const height = 350;
-            
-            // Filter data based on time range
-            const filteredData = chartData.filter(point => point.hours_ago <= timeRange);
-            
-            // Create simple SVG chart
-            let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="background:#1a1a1a; border-radius:5px;">`;
-            
-            // Add grid
-            for (let i = 0; i <= 4; i++) {
-                const y = i * (height / 4);
-                svg += `<line x1="0" y1="${y}" x2="${width}" y2="${y}" stroke="#333" stroke-width="1" />`;
-            }
-            
-            for (let i = 0; i <= 6; i++) {
-                const x = i * (width / 6);
-                svg += `<line x1="${x}" y1="0" x2="${x}" y2="${height}" stroke="#333" stroke-width="1" />`;
-            }
-            
-            // Add target line
-            const targetY = height * (1 - 0.85);
-            svg += `<line x1="0" y1="${targetY}" x2="${width}" y2="${targetY}" stroke="#e74c3c" stroke-width="1" stroke-dasharray="5,5" />`;
-            svg += `<text x="${width - 40}" y="${targetY - 5}" fill="#e74c3c" font-size="9">Target 85%</text>`;
-            
-            // Add moisture line
-            if (filteredData.length > 0) {
-                let moisturePath = `M`;
-                filteredData.forEach((point, i) => {
-                    const x = (point.hours_ago / timeRange) * width;
-                    const y = height * (1 - point.moisture / 100);
-                    
-                    if (i === 0) {
-                        moisturePath += `${x},${y}`;
-                    } else {
-                        moisturePath += ` L${x},${y}`;
-                    }
-                });
-                
-                svg += `<path d="${moisturePath}" stroke="#3498db" stroke-width="2" fill="none" />`;
-                
-                // Add PWEC line
-                let pwecPath = `M`;
-                filteredData.forEach((point, i) => {
-                    const x = (point.hours_ago / timeRange) * width;
-                    const y = height * (1 - point.pwec / 2.5);
-                    
-                    if (i === 0) {
-                        pwecPath += `${x},${y}`;
-                    } else {
-                        pwecPath += ` L${x},${y}`;
-                    }
-                });
-                
-                svg += `<path d="${pwecPath}" stroke="#2ecc71" stroke-width="2" fill="none" />`;
-                
-                // Add some data points
-                for (let i = 0; i < filteredData.length; i += Math.max(1, Math.floor(filteredData.length / 8))) {
-                    const point = filteredData[i];
-                    const x = (point.hours_ago / timeRange) * width;
-                    const moistureY = height * (1 - point.moisture / 100);
-                    const pwecY = height * (1 - point.pwec / 2.5);
-                    
-                    svg += `<circle cx="${x}" cy="${moistureY}" r="3" fill="#3498db" class="data-point" 
-                             data-moisture="${point.moisture.toFixed(1)}" data-pwec="${point.pwec.toFixed(3)}" data-time="${point.timestamp}" />`;
-                    svg += `<circle cx="${x}" cy="${pwecY}" r="3" fill="#2ecc71" class="data-point" 
-                             data-moisture="${point.moisture.toFixed(1)}" data-pwec="${point.pwec.toFixed(3)}" data-time="${point.timestamp}" />`;
-                }
-            }
-            
-            // Add axes
-            for (let i = 0; i <= 4; i++) {
-                const value = 100 - i * 25;
-                const y = i * (height / 4);
-                svg += `<text x="-5" y="${y + 3}" fill="#3498db" font-size="10" text-anchor="end">${value}%</text>`;
-            }
-            
-            for (let i = 0; i <= 4; i++) {
-                const value = 2.5 - i * 0.5;
-                const y = i * (height / 4);
-                svg += `<text x="${width + 10}" y="${y + 3}" fill="#2ecc71" font-size="10">${value.toFixed(1)}</text>`;
-            }
-            
-            // Add time labels
-            const timeLabels = generateTimeLabels(timeRange);
-            for (let i = 0; i <= 6; i++) {
-                const x = i * (width / 6);
-                svg += `<text x="${x}" y="${height + 15}" fill="#888" font-size="10" text-anchor="middle">${timeLabels[i]}</text>`;
-            }
-            
-            svg += `</svg>`;
-            
-            container.innerHTML = svg;
-            
-            // Add event listeners to data points
-            document.querySelectorAll('.data-point').forEach(point => {
-                point.addEventListener('mouseover', showDataPointTooltip);
-                point.addEventListener('mouseout', hideDataPointTooltip);
-            });
-        }
-        
-        function generateTimeLabels(timeRange) {
-            const now = new Date();
-            const labels = [];
-            
-            for (let i = 6; i >= 0; i--) {
-                const time = new Date(now.getTime() - (i * timeRange * 3600000 / 6));
-                const hours = time.getHours().toString().padStart(2, '0');
-                const minutes = time.getMinutes().toString().padStart(2, '0');
-                labels.push(`${hours}:${minutes}`);
-            }
-            
-            return labels;
-        }
-        
         function showDataPointTooltip(event) {
             const point = event.target;
             const moisture = point.getAttribute('data-moisture');
@@ -1271,6 +490,275 @@
             const tooltip = document.getElementById('chartTooltip');
             tooltip.classList.remove('show');
         }
+
+        function generateTimeLabels(timeRange) {
+            const now = new Date();
+            const labels = [];
+            
+            for (let i = 6; i >= 0; i--) {
+                const time = new Date(now.getTime() - (i * timeRange * 3600000 / 6));
+                const hours = time.getHours().toString().padStart(2, '0');
+                const minutes = time.getMinutes().toString().padStart(2, '0');
+                labels.push(`${hours}:${minutes}`);
+            }
+            
+            return labels;
+        }
+
+        function generateChart(data) {
+            const timeRange = parseInt(document.getElementById('timeRange').value);
+            const width = 600;
+            const height = 350;
+            const margin = { top: 20, right: 80, bottom: 60, left: 60 };
+            const chartWidth = width - margin.left - margin.right;
+            const chartHeight = height - margin.top - margin.bottom - 40;
+
+            // Filter data based on selected time range
+            const filteredData = data.history.filter(point => point.hours_ago <= timeRange);
+            
+            // Create SVG element
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("width", width);
+            svg.setAttribute("height", height);
+            svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+            svg.style.background = "#1a1a1a";
+            svg.style.borderRadius = "5px";
+            
+            const chart = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            chart.setAttribute("transform", `translate(${margin.left},${margin.top})`);
+            
+            // Grid
+            const grid = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            grid.setAttribute("stroke", "#333");
+            grid.setAttribute("stroke-width", "1");
+            
+            // Horizontal grid lines
+            for (let i = 0; i <= 4; i++) {
+                const y = i * (chartHeight / 4);
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", "0");
+                line.setAttribute("y1", y);
+                line.setAttribute("x2", chartWidth);
+                line.setAttribute("y2", y);
+                grid.appendChild(line);
+            }
+            
+            // Vertical grid lines
+            for (let i = 0; i <= 6; i++) {
+                const x = i * (chartWidth / 6);
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", x);
+                line.setAttribute("y1", "0");
+                line.setAttribute("x2", x);
+                line.setAttribute("y2", chartHeight);
+                grid.appendChild(line);
+            }
+            
+            chart.appendChild(grid);
+            
+            // Left Y-axis (Moisture)
+            const yAxisLeft = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            yAxisLeft.setAttribute("fill", "#3498db");
+            yAxisLeft.setAttribute("font-size", "10");
+            yAxisLeft.setAttribute("text-anchor", "end");
+            
+            for (let i = 0; i <= 4; i++) {
+                const value = 100 - i * 25;
+                const y = i * (chartHeight / 4);
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", -5);
+                text.setAttribute("y", y + 3);
+                text.textContent = value + "%";
+                yAxisLeft.appendChild(text);
+            }
+            
+            const yAxisLeftTitle = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            yAxisLeftTitle.setAttribute("transform", "rotate(-90)");
+            yAxisLeftTitle.setAttribute("x", -chartHeight / 2);
+            yAxisLeftTitle.setAttribute("y", -35);
+            yAxisLeftTitle.setAttribute("fill", "#3498db");
+            yAxisLeftTitle.setAttribute("font-size", "11");
+            yAxisLeftTitle.setAttribute("text-anchor", "middle");
+            yAxisLeftTitle.textContent = "Moisture (%)";
+            yAxisLeft.appendChild(yAxisLeftTitle);
+            
+            chart.appendChild(yAxisLeft);
+            
+            // Right Y-axis (PWEC)
+            const yAxisRight = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            yAxisRight.setAttribute("fill", "#2ecc71");
+            yAxisRight.setAttribute("font-size", "10");
+            yAxisRight.setAttribute("text-anchor", "start");
+            
+            for (let i = 0; i <= 4; i++) {
+                const value = 2.5 - i * 0.5;
+                const y = i * (chartHeight / 4);
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", chartWidth + 10);
+                text.setAttribute("y", y + 3);
+                text.textContent = value.toFixed(1);
+                yAxisRight.appendChild(text);
+            }
+            
+            const yAxisRightTitle = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            yAxisRightTitle.setAttribute("transform", "rotate(90)");
+            yAxisRightTitle.setAttribute("x", chartHeight / 2);
+            yAxisRightTitle.setAttribute("y", chartWidth + 45);
+            yAxisRightTitle.setAttribute("fill", "#2ecc71");
+            yAxisRightTitle.setAttribute("font-size", "11");
+            yAxisRightTitle.setAttribute("text-anchor", "middle");
+            yAxisRightTitle.textContent = "PWEC (dS/m)";
+            yAxisRight.appendChild(yAxisRightTitle);
+            
+            chart.appendChild(yAxisRight);
+            
+            // X-axis (Time)
+            const xAxis = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            xAxis.setAttribute("transform", `translate(0,${chartHeight})`);
+            xAxis.setAttribute("fill", "#e0e0e0");
+            xAxis.setAttribute("font-size", "10");
+            xAxis.setAttribute("text-anchor", "middle");
+            
+            const timeLabels = generateTimeLabels(timeRange);
+            for (let i = 0; i < timeLabels.length; i++) {
+                const x = i * (chartWidth / 6);
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", x);
+                text.setAttribute("y", 20);
+                text.textContent = timeLabels[i];
+                xAxis.appendChild(text);
+            }
+            
+            const xAxisTitle = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            xAxisTitle.setAttribute("x", chartWidth / 2);
+            xAxisTitle.setAttribute("y", 40);
+            xAxisTitle.setAttribute("fill", "#e0e0e0");
+            xAxisTitle.setAttribute("font-size", "11");
+            xAxisTitle.setAttribute("text-anchor", "middle");
+            xAxisTitle.textContent = "Time (hours ago)";
+            xAxis.appendChild(xAxisTitle);
+            
+            chart.appendChild(xAxis);
+            
+            // Target moisture line
+            const targetLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            targetLine.setAttribute("x1", "0");
+            targetLine.setAttribute("y1", chartHeight * (1 - (simulationState.moistureTarget / 100)));
+            targetLine.setAttribute("x2", chartWidth);
+            targetLine.setAttribute("y2", chartHeight * (1 - (simulationState.moistureTarget / 100)));
+            targetLine.setAttribute("stroke", "#e74c3c");
+            targetLine.setAttribute("stroke-width", "1");
+            targetLine.setAttribute("stroke-dasharray", "5,5");
+            chart.appendChild(targetLine);
+            
+            // Moisture line
+            if (filteredData.length > 1) {
+                const moisturePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                let moisturePathData = "M ";
+                
+                filteredData.forEach((point, index) => {
+                    const x = (1 - point.hours_ago / timeRange) * chartWidth;
+                    const y = chartHeight * (1 - (point.moisture / 100));
+                    
+                    if (index === 0) {
+                        moisturePathData += `${x},${y}`;
+                    } else {
+                        moisturePathData += ` L ${x},${y}`;
+                    }
+                });
+                
+                moisturePath.setAttribute("d", moisturePathData);
+                moisturePath.setAttribute("fill", "none");
+                moisturePath.setAttribute("stroke", "#3498db");
+                moisturePath.setAttribute("stroke-width", "2");
+                chart.appendChild(moisturePath);
+                
+                // Moisture data points
+                filteredData.forEach((point, index) => {
+                    if (index % 3 === 0) {
+                        const x = (1 - point.hours_ago / timeRange) * chartWidth;
+                        const y = chartHeight * (1 - (point.moisture / 100));
+                        
+                        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                        circle.setAttribute("cx", x);
+                        circle.setAttribute("cy", y);
+                        circle.setAttribute("r", "3");
+                        circle.setAttribute("fill", "#3498db");
+                        circle.setAttribute("class", "data-point");
+                        circle.setAttribute("data-moisture", point.moisture.toFixed(1));
+                        circle.setAttribute("data-pwec", point.pwec.toFixed(2));
+                        circle.setAttribute("data-time", point.timestamp);
+                        circle.addEventListener("mouseover", showDataPointTooltip);
+                        circle.addEventListener("mouseout", hideDataPointTooltip);
+                        chart.appendChild(circle);
+                    }
+                });
+            }
+            
+            // PWEC line
+            if (filteredData.length > 1) {
+                const pwecPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                let pwecPathData = "M ";
+                
+                filteredData.forEach((point, index) => {
+                    const x = (1 - point.hours_ago / timeRange) * chartWidth;
+                    const y = chartHeight * (1 - (point.pwec / 2.5));
+                    
+                    if (index === 0) {
+                        pwecPathData += `${x},${y}`;
+                    } else {
+                        pwecPathData += ` L ${x},${y}`;
+                    }
+                });
+                
+                pwecPath.setAttribute("d", pwecPathData);
+                pwecPath.setAttribute("fill", "none");
+                pwecPath.setAttribute("stroke", "#2ecc71");
+                pwecPath.setAttribute("stroke-width", "2");
+                chart.appendChild(pwecPath);
+                
+                // PWEC data points
+                filteredData.forEach((point, index) => {
+                    if (index % 3 === 0) {
+                        const x = (1 - point.hours_ago / timeRange) * chartWidth;
+                        const y = chartHeight * (1 - (point.pwec / 2.5));
+                        
+                        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                        circle.setAttribute("cx", x);
+                        circle.setAttribute("cy", y);
+                        circle.setAttribute("r", "3");
+                        circle.setAttribute("fill", "#2ecc71");
+                        circle.setAttribute("class", "data-point");
+                        circle.setAttribute("data-moisture", point.moisture.toFixed(1));
+                        circle.setAttribute("data-pwec", point.pwec.toFixed(2));
+                        circle.setAttribute("data-time", point.timestamp);
+                        circle.addEventListener("mouseover", showDataPointTooltip);
+                        circle.addEventListener("mouseout", hideDataPointTooltip);
+                        chart.appendChild(circle);
+                    }
+                });
+            }
+            
+            svg.appendChild(chart);
+            return svg;
+        }
+        
+        function refreshChart() {
+            const timeRange = document.getElementById('timeRange').value;
+            
+            // Generate simulated chart data
+            const chartData = {
+                history: simulationState.historyData,
+                target_moisture: simulationState.moistureTarget
+            };
+            
+            const chartContainer = document.getElementById('chartContainer');
+            const chart = generateChart(chartData);
+            chartContainer.innerHTML = '';
+            chartContainer.appendChild(chart);
+            
+            showNotification('Chart updated for ' + timeRange + ' hours', 'success');
+        }
         
         function zoomChart(factor) {
             chartScale *= factor;
@@ -1288,6 +776,281 @@
                 svg.style.transform = 'scale(1)';
             }
         }
+        
+        function togglePump() { 
+            simulationState.pumpOn = !simulationState.pumpOn;
+            const button = document.getElementById('pumpBtn');
+            if (simulationState.pumpOn) {
+                button.textContent = 'PUMP ON';
+                button.classList.remove('btn-red');
+                button.classList.add('btn-green');
+                showNotification('Pump started', 'success');
+            } else {
+                button.textContent = 'PUMP OFF';
+                button.classList.remove('btn-green');
+                button.classList.add('btn-red');
+                showNotification('Pump stopped', 'info');
+            }
+        }
+        
+        function toggleLights() { 
+            simulationState.lightsOn = !simulationState.lightsOn;
+            const button = document.getElementById('lightsBtn');
+            if (simulationState.lightsOn) {
+                button.textContent = 'LIGHTS ON';
+                button.classList.remove('btn-red');
+                button.classList.add('btn-green');
+                showNotification('Lights turned on', 'success');
+            } else {
+                button.textContent = 'LIGHTS OFF';
+                button.classList.remove('btn-green');
+                button.classList.add('btn-red');
+                showNotification('Lights turned off', 'info');
+            }
+        }
+        
+        function toggleService() { 
+            simulationState.serviceMode = !simulationState.serviceMode;
+            const button = document.getElementById('serviceBtn');
+            if (simulationState.serviceMode) {
+                button.textContent = 'SERVICE ON';
+                button.classList.remove('btn-red');
+                button.classList.add('btn-green');
+                showNotification('Service mode activated', 'success');
+            } else {
+                button.textContent = 'SERVICE OFF';
+                button.classList.remove('btn-green');
+                button.classList.add('btn-red');
+                showNotification('Service mode deactivated', 'info');
+            }
+        }
+        
+        function switchToVegetative() { 
+            simulationState.generative = false;
+            showNotification('Switched to Vegetative mode', 'success');
+        }
+        
+        function switchToGenerative() { 
+            simulationState.generative = true;
+            showNotification('Switched to Generative mode', 'success');
+        }
+        
+        function setHighestMoisture() {
+            const value = document.getElementById('setHighestValue').value;
+            if (value) {
+                simulationState.highestMoisture = parseFloat(value);
+                showNotification('Highest moisture set to ' + value + '%', 'success');
+            }
+        }
+        
+        function resetHighestMoisture() { 
+            simulationState.highestMoisture = 0;
+            showNotification('Highest moisture reset to 0%', 'info');
+        }
+        
+        function setTime() {
+            const hour = parseInt(document.getElementById('setHour').value) || 0;
+            const minute = parseInt(document.getElementById('setMinute').value) || 0;
+            const second = parseInt(document.getElementById('setSecond').value) || 0;
+            
+            setManualTime(hour, minute, second);
+            showNotification(`Time set to ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:${second.toString().padStart(2, '0')}`, 'success');
+        }
+        
+        function saveTimeSettings() {
+            calculateLightOffTime();
+            showNotification('Light schedule saved!', 'success');
+        }
+        
+        function scanNetworks() {
+            const networks = [
+                { ssid: 'Home_WiFi_5G', rssi: -45 },
+                { ssid: 'Home_WiFi', rssi: -55 },
+                { ssid: 'Neighbor_WiFi', rssi: -75 },
+                { ssid: 'Guest_Network', rssi: -82 }
+            ];
+            
+            let html = '';
+            networks.forEach(network => {
+                const strength = Math.min(Math.max(2 * (network.rssi + 100), 0), 100);
+                html += `<div style="padding: 10px; border-bottom: 1px solid #444; cursor: pointer;" 
+                         onclick="document.getElementById('wifi_ssid').value='${network.ssid}'">
+                          <strong>${network.ssid}</strong><br>
+                          <small>Signal: ${strength}%</small>
+                        </div>`;
+            });
+            document.getElementById('scanResults').innerHTML = html;
+            showNotification('Found ' + networks.length + ' networks', 'info');
+        }
+        
+        function saveWiFiConfig() {
+            const ssid = document.getElementById('wifi_ssid').value;
+            const password = document.getElementById('wifi_password').value;
+            
+            if (!ssid) {
+                showNotification('Please enter a WiFi SSID', 'error');
+                return;
+            }
+            
+            showNotification(`Connecting to ${ssid}...`, 'info');
+            
+            setTimeout(() => {
+                showNotification(`Successfully connected to ${ssid}`, 'success');
+                document.getElementById('currentWifiMode').textContent = 'Client';
+                document.getElementById('currentWifiStatus').textContent = `Connected: ${ssid}`;
+                document.getElementById('currentIP').textContent = '192.168.1.105';
+            }, 2000);
+        }
+        
+        function switchToAPMode() {
+            showNotification('Switching to AP mode...', 'info');
+            setTimeout(() => {
+                showNotification('AP mode activated', 'success');
+                document.getElementById('currentWifiMode').textContent = 'AP';
+                document.getElementById('currentWifiStatus').textContent = 'AP: Irrigation_System';
+                document.getElementById('currentIP').textContent = '192.168.4.1';
+            }, 1000);
+        }
+        
+        function saveAllSettings() {
+            simulationState.moistureTarget = parseFloat(document.getElementById('moisture_target').value);
+            simulationState.epsilonOffset = parseFloat(document.getElementById('epsilon_offset').value);
+            simulationState.serviceMode = document.getElementById('service_mode').checked;
+            
+            showNotification('Settings saved successfully!', 'success');
+        }
+
+        // Initialize with some historical data
+        function initializeHistoryData() {
+            const now = Date.now();
+            const data = [];
+            
+            for (let i = 144; i >= 0; i--) {
+                const timestamp = new Date(now - i * 10 * 60 * 1000);
+                
+                const baseMoisture = 75 + Math.sin(i * 0.1) * 10;
+                const noise = (Math.random() - 0.5) * 2;
+                const moisture = Math.max(60, Math.min(95, baseMoisture + noise));
+                
+                const pwec = 0.8 + (moisture / 100) * 1.5 + (Math.random() - 0.5) * 0.3;
+                
+                data.push({
+                    hours_ago: i * 10 / 60,
+                    timestamp: timestamp.toTimeString().substring(0, 5),
+                    moisture: moisture,
+                    pwec: Math.max(0.1, pwec)
+                });
+            }
+            
+            simulationState.historyData = data;
+        }
+
+        // Simulate sensor data updates
+        function simulateSensorReadings() {
+            // Moisture changes gradually
+            let moistureChange = -0.02;
+            if (simulationState.pumpOn) {
+                moistureChange = 0.3;
+                simulationState.currentSessionWater += 0.05;
+            }
+            moistureChange += (Math.random() - 0.5) * 0.05;
+            
+            simulationState.moisture = Math.max(60, Math.min(95, simulationState.moisture + moistureChange));
+            
+            // Update highest moisture
+            if (simulationState.moisture > simulationState.highestMoisture) {
+                simulationState.highestMoisture = simulationState.moisture;
+            }
+            
+            // Other sensors with some variation
+            simulationState.temperature = 22.5 + (Math.random() - 0.5) * 0.5;
+            simulationState.bulkEC = 1200 + (Math.random() - 0.5) * 100;
+            simulationState.poreEC = 1.2 + (Math.random() - 0.5) * 0.1;
+            simulationState.epsilonB = 12.5 + (Math.random() - 0.5) * 0.5;
+            
+            // Add to history occasionally
+            if (Math.random() < 0.05) {
+                const currentTime = Date.now();
+                const hoursAgo = (currentTime - simulationState.simulationStartTime) / (1000 * 60 * 60);
+                
+                const timeDate = new Date(currentTime);
+                simulationState.historyData.push({
+                    hours_ago: hoursAgo,
+                    timestamp: timeDate.toTimeString().substring(0, 5),
+                    moisture: simulationState.moisture,
+                    pwec: simulationState.poreEC
+                });
+                
+                if (simulationState.historyData.length > 200) {
+                    simulationState.historyData.shift();
+                }
+            }
+        }
+
+        function getCurrentPhase() {
+            if (simulationState.serviceMode) return "Service";
+            if (simulationState.maintenance) return "P2";
+            return "P1";
+        }
+
+        function updateStatus() {
+            // Update time first
+            updateTime();
+            
+            // Update all displayed values
+            document.getElementById('moisture').textContent = simulationState.moisture.toFixed(1) + '%';
+            document.getElementById('temperature').textContent = simulationState.temperature.toFixed(1) + '°C';
+            document.getElementById('poreEC').textContent = simulationState.poreEC.toFixed(3) + ' dS/m';
+            document.getElementById('bulkEC').textContent = Math.round(simulationState.bulkEC) + ' µS/cm';
+            document.getElementById('waterToday').textContent = simulationState.dailyWaterApplied.toFixed(1) + ' L';
+            document.getElementById('epsilonB').textContent = simulationState.epsilonB.toFixed(1);
+            document.getElementById('currentPhase').textContent = getCurrentPhase();
+            
+            document.getElementById('controlMoisture').textContent = simulationState.moisture.toFixed(1) + '%';
+            document.getElementById('controlHighest').textContent = simulationState.highestMoisture.toFixed(1) + '%';
+            document.getElementById('controlTarget').textContent = simulationState.moistureTarget.toFixed(1) + '%';
+            document.getElementById('currentMode').textContent = simulationState.generative ? 'Generative' : 'Vegetative';
+            document.getElementById('currentIrrigationPhase').textContent = getCurrentPhase();
+            
+            const progress = Math.min(100, Math.max(0, (simulationState.highestMoisture / simulationState.moistureTarget) * 100));
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressText').textContent = progress.toFixed(0) + '%';
+            
+            document.getElementById('pumpBtn').textContent = simulationState.pumpOn ? 'PUMP ON' : 'PUMP OFF';
+            document.getElementById('lightsBtn').textContent = simulationState.lightsOn ? 'LIGHTS ON' : 'LIGHTS OFF';
+            document.getElementById('serviceBtn').textContent = simulationState.serviceMode ? 'SERVICE ON' : 'SERVICE OFF';
+            document.getElementById('pumpBtn').className = simulationState.pumpOn ? 'quick-btn btn-green' : 'quick-btn btn-red';
+            document.getElementById('lightsBtn').className = simulationState.lightsOn ? 'quick-btn btn-green' : 'quick-btn btn-red';
+            document.getElementById('serviceBtn').className = simulationState.serviceMode ? 'quick-btn btn-green' : 'quick-btn btn-red';
+            
+            // Update settings form
+            document.getElementById('moisture_target').value = simulationState.moistureTarget;
+            document.getElementById('service_mode').checked = simulationState.serviceMode;
+        }
+        
+        // Add event listeners
+        document.getElementById('pumpBtn').addEventListener('click', togglePump);
+        document.getElementById('lightsBtn').addEventListener('click', toggleLights);
+        document.getElementById('serviceBtn').addEventListener('click', toggleService);
+        
+        // Add event listeners for real-time light calculation
+        document.getElementById('lights_hour').addEventListener('input', calculateLightOffTime);
+        document.getElementById('lights_minute').addEventListener('input', calculateLightOffTime);
+        document.getElementById('dark_hours').addEventListener('input', calculateLightOffTime);
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeHistoryData();
+            calculateLightOffTime(); // Calculate initial light off time
+            
+            // Start simulation loop
+            setInterval(() => {
+                simulateSensorReadings();
+                updateStatus();
+            }, 2000);
+            
+            updateStatus();
+        });
     </script>
 </body>
 </html>
