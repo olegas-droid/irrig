@@ -41,8 +41,8 @@
         .unit { color: #888; font-size: 12px; margin-left: 5px; }
         .sensor-value { font-weight: bold; color: #2ecc71; }
         .legend { display: flex; justify-content: center; margin: 10px 0; flex-wrap: wrap; }
-        .legend-item { display: flex; align-items: center; margin: 5px 15px; }
-        .legend-color { width: 15px; height: 15px; border-radius: 3px; margin-right: 5px; }
+        .legend-item { display: flex; align-items: center; margin: 5px 15px; cursor: pointer; }
+        .legend-color { width: 15px; height: 15px; border-radius: 3px; margin-right: 5px; transition: opacity 0.3s; }
         .moisture-color { background: #3498db; }
         .pwec-color { background: #2ecc71; }
         .target-line { stroke: #e74c3c; stroke-width: 1; stroke-dasharray: 5,5; }
@@ -56,9 +56,6 @@
         .data-point { cursor: pointer; transition: r 0.2s; }
         .data-point:hover { r: 5; }
         .chart-controls { display: flex; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
-        .chart-zoom { display: flex; gap: 5px; }
-        .zoom-btn { padding: 5px 10px; background: #34495e; color: white; border: none; border-radius: 3px; cursor: pointer; }
-        .zoom-btn:hover { background: #4a6b8a; }
     </style>
 </head>
 <body>
@@ -112,18 +109,6 @@
                 <button class="quick-btn btn-red" onclick="resetHighestMoisture()">Reset to 0</button>
             </div>
         </div>
-
-        <div class="section">
-            <h4>Growth Mode</h4>
-            <div class="input-group">
-                <label>Current Mode: <span id="currentMode" class="sensor-value">--</span></label>
-                <label>Irrigation Phase: <span id="currentIrrigationPhase" class="sensor-value">--</span></label>
-            </div>
-            <div class="grid-2">
-                <button class="quick-btn btn-green" onclick="switchToVegetative()">Vegetative</button>
-                <button class="quick-btn btn-green" onclick="switchToGenerative()">Generative</button>
-            </div>
-        </div>
     </div>
     
     <div id="chart" class="tabcontent">
@@ -140,11 +125,6 @@
                         <option value="1">1 Hour</option>
                     </select>
                 </div>
-                <div class="chart-zoom">
-                    <button class="zoom-btn" onclick="zoomChart(0.5)">Zoom -</button>
-                    <button class="zoom-btn" onclick="zoomChart(2)">Zoom +</button>
-                    <button class="zoom-btn" onclick="resetZoom()">Reset</button>
-                </div>
             </div>
             <button class="quick-btn btn-green" onclick="refreshChart()" style="width: 100%;">Refresh Chart</button>
         </div>
@@ -152,11 +132,11 @@
             <div style="padding: 50px; color: #666;">Loading chart data...</div>
         </div>
         <div class="legend">
-            <div class="legend-item">
+            <div class="legend-item" onclick="toggleChartLine('moisture')">
                 <div class="legend-color moisture-color"></div>
                 <span>Moisture (%)</span>
             </div>
-            <div class="legend-item">
+            <div class="legend-item" onclick="toggleChartLine('pwec')">
                 <div class="legend-color pwec-color"></div>
                 <span>PWEC (dS/m)</span>
             </div>
@@ -242,20 +222,12 @@
         <div class="section">
             <h4>Delay Settings</h4>
             <div class="input-group">
-                <label for="delay_before_veg">Delay Before Veg Lights Off <span class="unit">(hours)</span></label>
-                <input type="number" step="0.1" id="delay_before_veg" value="1.0">
+                <label for="delay_before">Delay Before Lights Off <span class="unit">(hours)</span></label>
+                <input type="number" step="0.1" id="delay_before" value="1.0">
             </div>
             <div class="input-group">
-                <label for="delay_after_veg">Delay After Veg Lights On <span class="unit">(hours)</span></label>
-                <input type="number" step="0.1" id="delay_after_veg" value="1.0">
-            </div>
-            <div class="input-group">
-                <label for="delay_before_gen">Delay Before Gen Lights Off <span class="unit">(hours)</span></label>
-                <input type="number" step="0.1" id="delay_before_gen" value="2.0">
-            </div>
-            <div class="input-group">
-                <label for="delay_after_gen">Delay After Gen Lights On <span class="unit">(hours)</span></label>
-                <input type="number" step="0.1" id="delay_after_gen" value="2.0">
+                <label for="delay_after">Delay After Lights On <span class="unit">(hours)</span></label>
+                <input type="number" step="0.1" id="delay_after" value="1.0">
             </div>
         </div>
 
@@ -311,7 +283,7 @@
                 <div class="grid-2">
                     <div>
                         <label for="lights_hour">Hour</label>
-                        <input type="number" id="lights_hour" min="0" max="23" value="0" placeholder="Hour">
+                        <input type="number" id="lights_hour" min="0" max="23" value="9" placeholder="Hour">
                     </div>
                     <div>
                         <label for="lights_minute">Minute</label>
@@ -324,7 +296,7 @@
                 <input type="number" step="0.1" id="dark_hours" value="12.0" placeholder="Dark Hours">
             </div>
             <div class="input-group">
-                <label>Calculated Lights Off Time: <span id="calculatedLightsOff" class="sensor-value">12:00</span></label>
+                <label>Calculated Lights Off Time: <span id="calculatedLightsOff" class="sensor-value">21:00</span></label>
             </div>
             <button class="quick-btn btn-green" onclick="saveTimeSettings()" style="width: 100%;">Save Light Schedule</button>
         </div>
@@ -334,7 +306,7 @@
     <div id="chartTooltip" class="chart-tooltip"></div>
 
     <script>
-        // Simulation State
+        // Simulation State - matches your updated Arduino structure
         let simulationState = {
             moisture: 75.0,
             temperature: 22.5,
@@ -346,7 +318,6 @@
             lightsOn: false,
             serviceMode: false,
             maintenance: false,
-            generative: false,
             dailyWaterApplied: 2.5,
             currentSessionWater: 0,
             wateringActive: false,
@@ -359,71 +330,66 @@
             virtualDay: 0,
             
             // Light schedule
-            lightsOnTime: "00:00:00",
+            lightsOnTime: "09:00:00",
             darkHours: 12.0,
             cachedTimes: {
-                lights_on_hour: 0,
+                lights_on_hour: 9,
                 lights_on_minute: 0,
-                lights_off_hour: 12,
+                lights_off_hour: 21,
                 lights_off_minute: 0,
                 parsed: true
             },
+            
+            // Simplified delay settings (no vegetative/generative)
+            delay_before: 1.0,
+            delay_after: 1.0,
             
             historyData: [],
             simulationStartTime: Date.now()
         };
 
-        // Constants
+        // Chart visibility controls
+        let showMoistureLine = true;
+        let showPwecLine = true;
+
+        // Constants from your Arduino code
         const ONE_SECOND = 1000;
         const ONE_MINUTE = 60000;
         const ONE_HOUR = 3600000;
         const ONE_DAY = 86400000;
 
-        // Calculate light off time EXACTLY like Arduino code
+        // Calculate light off time EXACTLY like your Arduino code
         function calculateLightOffTime() {
             const lights_hour = parseInt(document.getElementById('lights_hour').value) || 0;
             const lights_minute = parseInt(document.getElementById('lights_minute').value) || 0;
             const dark_hours = parseFloat(document.getElementById('dark_hours').value) || 12.0;
             
-            // EXACT Arduino calculation
+            // EXACT calculation from your Arduino code - using Math.floor for (int) casting
             const light_hours = 24.0 - dark_hours;
-            
-            // Use bitwise OR with 0 to match Arduino's (int) casting exactly
-            const light_minutes_float = light_hours * 60;
-            const light_minutes_int = (light_minutes_float) | 0; // This exactly matches (int) casting
-            
-            const lights_off_total_minutes = (lights_hour * 60 + lights_minute) + light_minutes_int;
-            const lights_off_hour = (lights_off_total_minutes / 60) | 0;
+            const lights_off_total_minutes = (lights_hour * 60 + lights_minute) + Math.floor(light_hours * 60);
+            const lights_off_hour = Math.floor(lights_off_total_minutes / 60) % 24;
             const lights_off_minute = lights_off_total_minutes % 60;
-            
-            // Handle 24-hour wrap-around
-            const final_lights_off_hour = lights_off_hour % 24;
             
             // Update display
             document.getElementById('calculatedLightsOff').textContent = 
-                `${final_lights_off_hour.toString().padStart(2, '0')}:${lights_off_minute.toString().padStart(2, '0')}`;
+                `${lights_off_hour.toString().padStart(2, '0')}:${lights_off_minute.toString().padStart(2, '0')}`;
             
             // Update simulation state
             simulationState.cachedTimes.lights_on_hour = lights_hour;
             simulationState.cachedTimes.lights_on_minute = lights_minute;
-            simulationState.cachedTimes.lights_off_hour = final_lights_off_hour;
+            simulationState.cachedTimes.lights_off_hour = lights_off_hour;
             simulationState.cachedTimes.lights_off_minute = lights_off_minute;
             simulationState.darkHours = dark_hours;
             
-            console.log(`Arduino Calculation:`);
-            console.log(`  Lights ON: ${lights_hour}:${lights_minute.toString().padStart(2, '0')}`);
-            console.log(`  Dark hours: ${dark_hours}, Light hours: ${light_hours}`);
-            console.log(`  Light minutes: ${light_minutes_float} -> ${light_minutes_int} (truncated)`);
-            console.log(`  Total minutes: ${lights_off_total_minutes}`);
-            console.log(`  Lights OFF: ${final_lights_off_hour.toString().padStart(2, '0')}:${lights_off_minute.toString().padStart(2, '0')}`);
+            console.log(`Lights ON: ${lights_hour}:${lights_minute}, Lights OFF: ${lights_off_hour}:${lights_off_minute}, Dark: ${dark_hours}h, Light: ${light_hours}h`);
         }
 
-        // Safe time difference calculation
+        // Safe time difference calculation from your code
         function safeTimeDifference(current, previous) {
             return (current >= previous) ? (current - previous) : (Number.MAX_SAFE_INTEGER - previous + current + 1);
         }
 
-        // Update time
+        // Update time exactly like your Arduino code
         function updateTime() {
             const current_millis = Date.now();
             const total_millis = safeTimeDifference(current_millis, simulationState.manualBase);
@@ -433,7 +399,7 @@
             const minutes = Math.floor((total_seconds % 3600) / 60);
             const seconds = total_seconds % 60;
             
-            simulationState.virtualDay = Math.floor(safeTimeDifference(current_millis, simulationState.days_base) / ONE_DAY);
+            simulationState.virtualDay = Math.floor(safeTimeDifference(current_millis, simulationState.daysBase) / ONE_DAY);
             
             const time_str = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
@@ -441,13 +407,32 @@
             document.getElementById('currentTimeDisplay').textContent = time_str;
         }
 
-        // Set manual time
+        // Set manual time exactly like your Arduino code
         function setManualTime(h, m, s) {
             simulationState.manualBase = Date.now() - (h * ONE_HOUR + m * ONE_MINUTE + s * ONE_SECOND);
         }
 
-        let chartScale = 1;
-        
+        // Check if current time is within light period
+        function isLightTime() {
+            const current_millis = Date.now();
+            const total_millis = safeTimeDifference(current_millis, simulationState.manualBase);
+            const total_seconds = Math.floor(total_millis / ONE_SECOND);
+            
+            const current_hour = Math.floor(total_seconds / 3600) % 24;
+            const current_minute = Math.floor((total_seconds % 3600) / 60);
+            const current_second = total_seconds % 60;
+            
+            const current_secs = current_hour * 3600 + current_minute * 60 + current_second;
+            const start_secs = simulationState.cachedTimes.lights_on_hour * 3600 + simulationState.cachedTimes.lights_on_minute * 60;
+            const end_secs = simulationState.cachedTimes.lights_off_hour * 3600 + simulationState.cachedTimes.lights_off_minute * 60;
+            
+            if (start_secs < end_secs) {
+                return (current_secs >= start_secs && current_secs < end_secs);
+            } else {
+                return (current_secs >= start_secs || current_secs < end_secs);
+            }
+        }
+
         function openTab(tabName) {
             document.querySelectorAll('.tabcontent').forEach(tab => tab.style.display = 'none');
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
@@ -465,6 +450,17 @@
             setTimeout(() => {
                 notification.classList.remove('show');
             }, 3000);
+        }
+
+        function toggleChartLine(lineType) {
+            if (lineType === 'moisture') {
+                showMoistureLine = !showMoistureLine;
+                document.querySelector('.moisture-color').style.opacity = showMoistureLine ? '1' : '0.3';
+            } else if (lineType === 'pwec') {
+                showPwecLine = !showPwecLine;
+                document.querySelector('.pwec-color').style.opacity = showPwecLine ? '1' : '0.3';
+            }
+            refreshChart();
         }
 
         function showDataPointTooltip(event) {
@@ -491,6 +487,7 @@
             tooltip.classList.remove('show');
         }
 
+        // ORIGINAL CHART SIMULATION - like your original code
         function generateTimeLabels(timeRange) {
             const now = new Date();
             const labels = [];
@@ -513,7 +510,7 @@
             const chartWidth = width - margin.left - margin.right;
             const chartHeight = height - margin.top - margin.bottom - 40;
 
-            // Filter data based on selected time range
+            // Filter data based on selected time range - ORIGINAL LOGIC
             const filteredData = data.history.filter(point => point.hours_ago <= timeRange);
             
             // Create SVG element
@@ -612,7 +609,7 @@
             
             chart.appendChild(yAxisRight);
             
-            // X-axis (Time)
+            // X-axis (Time) - ORIGINAL LABELING
             const xAxis = document.createElementNS("http://www.w3.org/2000/svg", "g");
             xAxis.setAttribute("transform", `translate(0,${chartHeight})`);
             xAxis.setAttribute("fill", "#e0e0e0");
@@ -635,7 +632,7 @@
             xAxisTitle.setAttribute("fill", "#e0e0e0");
             xAxisTitle.setAttribute("font-size", "11");
             xAxisTitle.setAttribute("text-anchor", "middle");
-            xAxisTitle.textContent = "Time (hours ago)";
+            xAxisTitle.textContent = "Time";
             xAxis.appendChild(xAxisTitle);
             
             chart.appendChild(xAxis);
@@ -651,8 +648,8 @@
             targetLine.setAttribute("stroke-dasharray", "5,5");
             chart.appendChild(targetLine);
             
-            // Moisture line
-            if (filteredData.length > 1) {
+            // Moisture line - ORIGINAL SIMULATION
+            if (showMoistureLine && filteredData.length > 1) {
                 const moisturePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
                 let moisturePathData = "M ";
                 
@@ -671,6 +668,7 @@
                 moisturePath.setAttribute("fill", "none");
                 moisturePath.setAttribute("stroke", "#3498db");
                 moisturePath.setAttribute("stroke-width", "2");
+                moisturePath.setAttribute("opacity", showMoistureLine ? "1" : "0.3");
                 chart.appendChild(moisturePath);
                 
                 // Moisture data points
@@ -695,8 +693,8 @@
                 });
             }
             
-            // PWEC line
-            if (filteredData.length > 1) {
+            // PWEC line - ORIGINAL SIMULATION
+            if (showPwecLine && filteredData.length > 1) {
                 const pwecPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
                 let pwecPathData = "M ";
                 
@@ -715,6 +713,7 @@
                 pwecPath.setAttribute("fill", "none");
                 pwecPath.setAttribute("stroke", "#2ecc71");
                 pwecPath.setAttribute("stroke-width", "2");
+                pwecPath.setAttribute("opacity", showPwecLine ? "1" : "0.3");
                 chart.appendChild(pwecPath);
                 
                 // PWEC data points
@@ -758,23 +757,6 @@
             chartContainer.appendChild(chart);
             
             showNotification('Chart updated for ' + timeRange + ' hours', 'success');
-        }
-        
-        function zoomChart(factor) {
-            chartScale *= factor;
-            const svg = document.querySelector('#chartContainer svg');
-            if (svg) {
-                svg.style.transform = `scale(${chartScale})`;
-                svg.style.transformOrigin = 'center center';
-            }
-        }
-        
-        function resetZoom() {
-            chartScale = 1;
-            const svg = document.querySelector('#chartContainer svg');
-            if (svg) {
-                svg.style.transform = 'scale(1)';
-            }
         }
         
         function togglePump() { 
@@ -825,16 +807,6 @@
             }
         }
         
-        function switchToVegetative() { 
-            simulationState.generative = false;
-            showNotification('Switched to Vegetative mode', 'success');
-        }
-        
-        function switchToGenerative() { 
-            simulationState.generative = true;
-            showNotification('Switched to Generative mode', 'success');
-        }
-        
         function setHighestMoisture() {
             const value = document.getElementById('setHighestValue').value;
             if (value) {
@@ -858,6 +830,10 @@
         }
         
         function saveTimeSettings() {
+            const lights_hour = document.getElementById('lights_hour').value;
+            const lights_minute = document.getElementById('lights_minute').value;
+            const dark_hours = document.getElementById('dark_hours').value;
+            
             calculateLightOffTime();
             showNotification('Light schedule saved!', 'success');
         }
@@ -916,11 +892,13 @@
             simulationState.moistureTarget = parseFloat(document.getElementById('moisture_target').value);
             simulationState.epsilonOffset = parseFloat(document.getElementById('epsilon_offset').value);
             simulationState.serviceMode = document.getElementById('service_mode').checked;
+            simulationState.delay_before = parseFloat(document.getElementById('delay_before').value);
+            simulationState.delay_after = parseFloat(document.getElementById('delay_after').value);
             
             showNotification('Settings saved successfully!', 'success');
         }
 
-        // Initialize with some historical data
+        // Initialize with some historical data - ORIGINAL SIMULATION
         function initializeHistoryData() {
             const now = Date.now();
             const data = [];
@@ -945,7 +923,7 @@
             simulationState.historyData = data;
         }
 
-        // Simulate sensor data updates
+        // Simulate sensor data updates - ORIGINAL BEHAVIOR
         function simulateSensorReadings() {
             // Moisture changes gradually
             let moistureChange = -0.02;
@@ -968,7 +946,7 @@
             simulationState.poreEC = 1.2 + (Math.random() - 0.5) * 0.1;
             simulationState.epsilonB = 12.5 + (Math.random() - 0.5) * 0.5;
             
-            // Add to history occasionally
+            // Add to history occasionally - ORIGINAL FREQUENCY
             if (Math.random() < 0.05) {
                 const currentTime = Date.now();
                 const hoursAgo = (currentTime - simulationState.simulationStartTime) / (1000 * 60 * 60);
@@ -1009,7 +987,6 @@
             document.getElementById('controlMoisture').textContent = simulationState.moisture.toFixed(1) + '%';
             document.getElementById('controlHighest').textContent = simulationState.highestMoisture.toFixed(1) + '%';
             document.getElementById('controlTarget').textContent = simulationState.moistureTarget.toFixed(1) + '%';
-            document.getElementById('currentMode').textContent = simulationState.generative ? 'Generative' : 'Vegetative';
             document.getElementById('currentIrrigationPhase').textContent = getCurrentPhase();
             
             const progress = Math.min(100, Math.max(0, (simulationState.highestMoisture / simulationState.moistureTarget) * 100));
@@ -1026,6 +1003,8 @@
             // Update settings form
             document.getElementById('moisture_target').value = simulationState.moistureTarget;
             document.getElementById('service_mode').checked = simulationState.serviceMode;
+            document.getElementById('delay_before').value = simulationState.delay_before;
+            document.getElementById('delay_after').value = simulationState.delay_after;
         }
         
         // Add event listeners
@@ -1033,24 +1012,22 @@
         document.getElementById('lightsBtn').addEventListener('click', toggleLights);
         document.getElementById('serviceBtn').addEventListener('click', toggleService);
         
-        // Add event listeners for real-time light calculation
+        // Initialize
+        initializeHistoryData();
+        calculateLightOffTime(); // Calculate initial light off time
+        simulationState.simulationStartTime = Date.now();
+        
+        document.getElementById('dark_hours').addEventListener('input', calculateLightOffTime);
         document.getElementById('lights_hour').addEventListener('input', calculateLightOffTime);
         document.getElementById('lights_minute').addEventListener('input', calculateLightOffTime);
-        document.getElementById('dark_hours').addEventListener('input', calculateLightOffTime);
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeHistoryData();
-            calculateLightOffTime(); // Calculate initial light off time
-            
-            // Start simulation loop
-            setInterval(() => {
-                simulateSensorReadings();
-                updateStatus();
-            }, 2000);
-            
+        
+        // Start simulation loop
+        setInterval(() => {
+            simulateSensorReadings();
             updateStatus();
-        });
+        }, 2000);
+        
+        updateStatus();
     </script>
 </body>
 </html>
