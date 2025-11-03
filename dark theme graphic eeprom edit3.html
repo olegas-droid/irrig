@@ -326,7 +326,7 @@
                 <input type="number" step="0.1" id="dark_hours" value="12.0" placeholder="Dark Hours">
             </div>
             <div class="input-group">
-                <label>Calculated Lights Off Time: <span class="sensor-value">21:00</span></label>
+                <label>Calculated Lights Off Time: <span id="lightsOffTime" class="sensor-value">21:00</span></label>
             </div>
             <button class="quick-btn btn-green" onclick="saveTimeSettings()" style="width: 100%;">Save Light Schedule</button>
         </div>
@@ -392,6 +392,25 @@
             }
             
             return history;
+        }
+        
+        // Calculate lights off time based on lights on time and dark hours
+        function calculateLightsOffTime() {
+            const lights_hour = parseInt(document.getElementById('lights_hour').value) || 9;
+            const lights_minute = parseInt(document.getElementById('lights_minute').value) || 0;
+            const dark_hours = parseFloat(document.getElementById('dark_hours').value) || 12.0;
+            
+            // Same calculation as in ESP32 code: (hour + (int)(24 - dark_hours)) % 24
+            const lights_off_hour = (lights_hour + Math.floor(24 - dark_hours)) % 24;
+            const lights_off_minute = lights_minute;
+            
+            return lights_off_hour.toString().padStart(2, '0') + ':' + lights_off_minute.toString().padStart(2, '0');
+        }
+        
+        // Update the displayed lights off time
+        function updateLightsOffTime() {
+            const lightsOffTime = calculateLightsOffTime();
+            document.getElementById('lightsOffTime').textContent = lightsOffTime;
         }
         
         function openTab(tabName) {
@@ -770,11 +789,8 @@
         }
         
         function saveTimeSettings() {
-            const lights_hour = document.getElementById('lights_hour').value;
-            const lights_minute = document.getElementById('lights_minute').value;
-            const dark_hours = document.getElementById('dark_hours').value;
-            
-            showNotification('Light schedule saved!', 'success');
+            const lightsOffTime = calculateLightsOffTime();
+            showNotification('Light schedule saved! Lights off at ' + lightsOffTime, 'success');
         }
         
         function scanNetworks() {
@@ -873,8 +889,17 @@
         document.getElementById('lightsBtn').addEventListener('click', toggleLights);
         document.getElementById('serviceBtn').addEventListener('click', toggleService);
         
+        // Add event listeners for light schedule inputs
+        document.getElementById('lights_hour').addEventListener('change', updateLightsOffTime);
+        document.getElementById('lights_minute').addEventListener('change', updateLightsOffTime);
+        document.getElementById('dark_hours').addEventListener('change', updateLightsOffTime);
+        document.getElementById('dark_hours').addEventListener('input', updateLightsOffTime);
+        
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize lights off time calculation
+            updateLightsOffTime();
+            
             // Start with a chart
             refreshChart();
             
