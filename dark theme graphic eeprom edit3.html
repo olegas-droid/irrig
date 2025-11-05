@@ -143,7 +143,7 @@
             </div>
             <div class="legend-item">
                 <div style="background: #e74c3c; width: 15px; height: 2px; margin-right: 5px;"></div>
-                <span>Target Moisture (85%)</span>
+                <span>Target Moisture (<span id="targetMoistureValue">85</span>%)</span>
             </div>
         </div>
     </div>
@@ -325,7 +325,7 @@
                 <input type="number" step="0.1" id="dark_hours" value="12.0" placeholder="Dark Hours">
             </div>
             <div class="input-group">
-                <label>Calculated Lights Off Time: <span class="sensor-value">21:00</span></label>
+                <label>Calculated Lights Off Time: <span id="lightsOffTime" class="sensor-value">21:00</span></label>
             </div>
             <button class="quick-btn btn-green" onclick="saveTimeSettings()" style="width: 100%;">Save Light Schedule</button>
         </div>
@@ -335,6 +335,17 @@
     <div id="chartTooltip" class="chart-tooltip"></div>
 
     <script>
+        // Constants - identical to ntp.ino
+        const ONE_SECOND = 1000;
+        const ONE_MINUTE = 60000;
+        const ONE_HOUR = 3600000;
+        const ONE_DAY = 86400000;
+        const HISTORY_INTERVAL = 10 * ONE_MINUTE;
+
+        // FIXED: Arduino-like time emulation
+        let deviceBootTime = Date.now();      // When simulation started (like Arduino boot)
+        let virtualMillis = 0;               // Analog of millis() in Arduino
+
         // Exact replica of Arduino data structures
         const Config = {
             moisture_target: 85.0,
@@ -372,8 +383,8 @@
             pump_on: false,
             lights_on: false,
             last_irrigation: null,
-            manual_base: null,
-            days_base: null,
+            manual_base: 12 * ONE_HOUR, // Initial offset like in ntp.ino
+            days_base: 0,
             current_time: "--:--:--",
             wifi_status: "AP: Irrigation_System",
             virtual_day: 0,
@@ -399,30 +410,45 @@
             HISTORY_SIZE: 144,
             moisture_values: new Array(144).fill(0),
             pwec_values: new Array(144).fill(0),
-            timestamps: new Array(144).fill(0),
+            timestamps: new Array(144).fill(0), // Will store virtualMillis like ntp.ino
             current_index: 0,
             last_record_time: 0
         };
 
-        // Constants
-        const ONE_SECOND = 1000;
-        const ONE_MINUTE = 60000;
-        const ONE_HOUR = 3600000;
-        const ONE_DAY = 86400000;
-        const HISTORY_INTERVAL = 10 * ONE_MINUTE;
-
         // Simulation state
-        let manualBaseTime = Date.now() - (12 * ONE_HOUR);
         let chartDataCache = null;
         let showMoistureLine = true;
         let showPwecLine = true;
         let lastResetDay = -1;
 
+        // FIXED: Manual watering session tracking
+        let manualWateringSession = {
+            active: false,
+            start_time: null
+        };
+
+        // FIXED: Arduino-like safe time difference
+        function safeTimeDifference(current, previous) {
+            return (current >= previous) ? (current - previous) : (Number.MAX_SAFE_INTEGER - previous + current + 1);
+        }
+
+        // FIXED: Update virtual time (like Arduino loop)
+        function updateVirtualTime() {
+            virtualMillis = Date.now() - deviceBootTime;
+        }
+
+        // FIXED: Get current virtual time (like in ntp.ino)
+        function getCurrentVirtualTime() {
+            return virtualMillis;
+        }
+
         // Initialize system
         function initializeSystem() {
+            updateVirtualTime();
             generateInitialHistory();
             parseAndCacheTimes();
             
+            setInterval(updateVirtualTime, 100);
             setInterval(updateSensors, 2000);
             setInterval(updateIrrigationLogic, 5000);
             setInterval(updateLights, 5000);
@@ -435,17 +461,23 @@
             refreshChart();
         }
 
+        // FIXED: Generate history with virtual timestamps like ntp.ino
         function generateInitialHistory() {
-            const now = Date.now();
-            // Generate data for the last 24 hours with 10-minute intervals
+            const currentVirtualTime = getCurrentVirtualTime();
+            
             for (let i = 0; i < HistoryData.HISTORY_SIZE; i++) {
-                const timestamp = now - (24 * ONE_HOUR) + (i * 10 * ONE_MINUTE);
-                const recordTime = new Date(timestamp);
-                const hour = recordTime.getHours();
+                // Use virtual time like ntp.ino (millis-based)
+                const recordVirtualTime = currentVirtualTime - (24 * ONE_HOUR) + (i * 10 * ONE_MINUTE);
                 
-                // Realistic moisture pattern with irrigation events during light hours
+                // Realistic moisture pattern with irrigation events
                 let moisture = 70 + Math.random() * 10;
-                if (hour >= 10 && hour <= 18 && i % 8 === 0) {
+                
+                // Calculate virtual hour for realistic patterns
+                const total_millis = safeTimeDifference(recordVirtualTime, State.manual_base);
+                const total_seconds = Math.floor(total_millis / 1000);
+                const virtual_hour = (total_seconds / 3600) % 24;
+                
+                if (virtual_hour >= 10 && virtual_hour <= 18 && i % 8 === 0) {
                     moisture = 85 + Math.random() * 5; // Irrigation spike
                 }
                 
@@ -454,24 +486,28 @@
                 
                 HistoryData.moisture_values[i] = moisture;
                 HistoryData.pwec_values[i] = pwec;
-                HistoryData.timestamps[i] = timestamp;
+                HistoryData.timestamps[i] = recordVirtualTime; // Store virtual time like ntp.ino
             }
             HistoryData.current_index = HistoryData.HISTORY_SIZE - 1;
-            HistoryData.last_record_time = now;
+            HistoryData.last_record_time = currentVirtualTime;
         }
 
         function updateSensors() {
-            // When pump is on, moisture should increase
-            if (State.pump_on && State.watering.active) {
-                // Increase moisture when watering is active
+            // FIXED: Use virtual time for sensor updates
+            const currentVirtualTime = getCurrentVirtualTime();
+            
+            if (State.pump_on) {
                 State.soil_moisture = Math.min(100, State.soil_moisture + 0.2);
             } else {
-                // Natural moisture decay when pump is off
                 State.soil_moisture = Math.max(15, State.soil_moisture - (0.05 + Math.random() * 0.05));
             }
             
-            const currentHour = parseInt(State.current_time.split(':')[0]);
-            const targetTemp = 18 + 8 * Math.sin((currentHour - 6) * Math.PI / 12);
+            // Use virtual time for temperature patterns
+            const total_millis = safeTimeDifference(currentVirtualTime, State.manual_base);
+            const total_seconds = Math.floor(total_millis / 1000);
+            const virtual_hour = (total_seconds / 3600) % 24;
+            
+            const targetTemp = 18 + 8 * Math.sin((virtual_hour - 6) * Math.PI / 12);
             State.soil_temp += (targetTemp - State.soil_temp) * 0.1;
             
             State.soil_cond = 400 + Math.random() * 100;
@@ -506,20 +542,19 @@
             State.pore_ec = Math.max(0, Math.min(30.0, State.pore_ec));
         }
 
-        // FIXED: Emergency watering and P2 switching logic
+        // FIXED: Use virtual time for irrigation logic
         function updateIrrigationLogic() {
-            if (Config.service_mode || State.watering.active) return;
+            if (Config.service_mode || State.watering.active || manualWateringSession.active) return;
             
-            const now = Date.now();
+            const currentVirtualTime = getCurrentVirtualTime();
             const min_interval = Config.time_between_shots * ONE_MINUTE;
             
-            if (State.last_irrigation && (now - State.last_irrigation) < min_interval) {
+            if (State.last_irrigation && safeTimeDifference(currentVirtualTime, State.last_irrigation) < min_interval) {
                 return;
             }
             
             const moisture_diff = Config.moisture_target - State.soil_moisture;
             
-            // FIXED: Emergency watering condition
             if (moisture_diff > Config.max_dryback) {
                 console.log("EMERGENCY Watering - Max dryback exceeded");
                 startWatering(Config.p2_shot);
@@ -530,25 +565,23 @@
             
             if (in_window) {
                 if (!Config.maintenance) {
-                    // P1 Watering
                     if (moisture_diff > Config.p1_dryback) {
                         console.log("P1 Watering - Normal phase");
                         startWatering(Config.p1_shot);
                     }
-                    // FIXED: Switch to P2 when highest moisture reaches target
                     else if (State.highest_moisture >= Config.moisture_target) {
                         Config.maintenance = true;
                         console.log("Switched to Maintenance (P2) phase");
                     }
-                } else {
-                    // P2 Watering
+                }
+                else {
                     if (moisture_diff > Config.p2_dryback) {
                         console.log("P2 Watering - Maintenance phase");
                         startWatering(Config.p2_shot);
                     }
                 }
-            } else {
-                // FIXED: Reset to P1 when outside irrigation window
+            }
+            else {
                 if (Config.maintenance) {
                     Config.maintenance = false;
                     console.log("Reset to P1 Phase - Outside irrigation window");
@@ -559,13 +592,15 @@
         function startWatering(seconds) {
             if (State.watering.active) return;
             
+            const currentVirtualTime = getCurrentVirtualTime();
+            
             State.watering.active = true;
-            State.watering.start_time = Date.now();
+            State.watering.start_time = currentVirtualTime;
             State.watering.duration_seconds = seconds;
-            State.current_session_start = Date.now();
+            State.current_session_start = currentVirtualTime;
             State.current_session_water = 0;
             State.pump_on = true;
-            State.last_irrigation = Date.now();
+            State.last_irrigation = currentVirtualTime;
             
             console.log(`Watering started: ${seconds} seconds`);
         }
@@ -573,7 +608,8 @@
         function stopWatering() {
             if (!State.watering.active) return;
             
-            const session_duration = (Date.now() - State.current_session_start) / 1000;
+            const currentVirtualTime = getCurrentVirtualTime();
+            const session_duration = safeTimeDifference(currentVirtualTime, State.current_session_start) / 1000;
             const session_water = (session_duration / 3600) * Config.pump_flow_rate;
             
             State.daily_water_applied += session_water;
@@ -584,17 +620,69 @@
             console.log(`Watering completed. Water used: ${session_water.toFixed(1)} L`);
         }
 
-        function updateWatering() {
-            if (!State.watering.active) return;
-            
-            const current_millis = Date.now();
-            const elapsed = current_millis - State.watering.start_time;
-            
-            if (elapsed >= (State.watering.duration_seconds * ONE_SECOND)) {
-                stopWatering();
+        // FIXED: Manual pump control with virtual time
+        function togglePump() {
+            if (State.pump_on) {
+                if (State.watering.active) {
+                    stopWatering();
+                } else if (manualWateringSession.active) {
+                    stopManualWatering();
+                }
             } else {
-                const session_duration = (current_millis - State.current_session_start) / 1000;
+                startManualWatering();
+            }
+        }
+
+        function startManualWatering() {
+            const currentVirtualTime = getCurrentVirtualTime();
+            
+            manualWateringSession.active = true;
+            manualWateringSession.start_time = currentVirtualTime;
+            State.current_session_start = currentVirtualTime;
+            State.current_session_water = 0;
+            State.pump_on = true;
+            State.last_irrigation = currentVirtualTime;
+            
+            console.log("Manual watering started");
+        }
+
+        function stopManualWatering() {
+            if (!manualWateringSession.active) return;
+            
+            const currentVirtualTime = getCurrentVirtualTime();
+            const session_duration = safeTimeDifference(currentVirtualTime, manualWateringSession.start_time) / 1000;
+            const session_water = (session_duration / 3600) * Config.pump_flow_rate;
+            
+            State.daily_water_applied += session_water;
+            State.current_session_water = 0;
+            manualWateringSession.active = false;
+            State.pump_on = false;
+            
+            console.log(`Manual watering stopped. Water used: ${session_water.toFixed(1)} L`);
+        }
+
+        function updateWatering() {
+            const currentVirtualTime = getCurrentVirtualTime();
+            
+            if (State.watering.active) {
+                const elapsed = safeTimeDifference(currentVirtualTime, State.watering.start_time);
+                
+                if (elapsed >= (State.watering.duration_seconds * ONE_SECOND)) {
+                    stopWatering();
+                } else {
+                    const session_duration = safeTimeDifference(currentVirtualTime, State.current_session_start) / 1000;
+                    State.current_session_water = (session_duration / 3600) * Config.pump_flow_rate;
+                }
+            }
+            
+            if (manualWateringSession.active) {
+                const session_duration = safeTimeDifference(currentVirtualTime, manualWateringSession.start_time) / 1000;
                 State.current_session_water = (session_duration / 3600) * Config.pump_flow_rate;
+                
+                if (session_duration > 300) {
+                    stopManualWatering();
+                    showNotification('Manual watering stopped automatically after 5 minutes', 'info');
+                }
             }
         }
 
@@ -608,9 +696,10 @@
             }
         }
 
+        // FIXED: Time update using virtual time like ntp.ino
         function updateTime() {
-            const now = Date.now();
-            const total_millis = now - manualBaseTime;
+            const currentVirtualTime = getCurrentVirtualTime();
+            const total_millis = safeTimeDifference(currentVirtualTime, State.manual_base);
             const total_seconds = Math.floor(total_millis / 1000);
             
             const hours = Math.floor((total_seconds / 3600) % 24);
@@ -622,9 +711,9 @@
                 minutes.toString().padStart(2, '0') + ':' +
                 seconds.toString().padStart(2, '0');
             
-            State.virtual_day = Math.floor((now - manualBaseTime) / ONE_DAY);
+            State.virtual_day = Math.floor(safeTimeDifference(currentVirtualTime, State.days_base) / ONE_DAY);
             
-            // FIXED: Daily reset logic matching Arduino code
+            // FIXED: Daily reset using virtual time
             if (hours === State.cached_times.lights_on_hour && 
                 minutes === State.cached_times.lights_on_minute && 
                 State.virtual_day !== lastResetDay) {
@@ -637,16 +726,17 @@
             updateUI();
         }
 
+        // FIXED: History update with virtual time
         function updateHistory() {
-            const current_time = Date.now();
+            const currentVirtualTime = getCurrentVirtualTime();
             
-            if (current_time - HistoryData.last_record_time >= HISTORY_INTERVAL) {
+            if (safeTimeDifference(currentVirtualTime, HistoryData.last_record_time) >= HISTORY_INTERVAL) {
                 HistoryData.moisture_values[HistoryData.current_index] = State.soil_moisture;
                 HistoryData.pwec_values[HistoryData.current_index] = State.pore_ec;
-                HistoryData.timestamps[HistoryData.current_index] = current_time;
+                HistoryData.timestamps[HistoryData.current_index] = currentVirtualTime; // Store virtual time
                 
                 HistoryData.current_index = (HistoryData.current_index + 1) % HistoryData.HISTORY_SIZE;
-                HistoryData.last_record_time = current_time;
+                HistoryData.last_record_time = currentVirtualTime;
                 
                 chartDataCache = null;
                 
@@ -705,7 +795,7 @@
         }
 
         function getTodayAppliedWater() {
-            if (!State.watering.active) {
+            if (!State.watering.active && !manualWateringSession.active) {
                 return State.daily_water_applied;
             }
             return State.daily_water_applied + State.current_session_water;
@@ -727,6 +817,7 @@
             document.getElementById('controlMoisture').textContent = State.soil_moisture.toFixed(1) + '%';
             document.getElementById('controlHighest').textContent = State.highest_moisture.toFixed(1) + '%';
             document.getElementById('controlTarget').textContent = Config.moisture_target.toFixed(1) + '%';
+            document.getElementById('targetMoistureValue').textContent = Config.moisture_target.toFixed(1);
             
             const progress = Math.min(100, Math.max(0, (State.highest_moisture / Config.moisture_target) * 100));
             document.getElementById('progressBar').style.width = progress + '%';
@@ -771,12 +862,6 @@
             if (tabName === 'chart') refreshChart();
         }
 
-        function togglePump() {
-            State.pump_on = !State.pump_on;
-            if (State.pump_on) State.last_irrigation = Date.now();
-            console.log("Pump " + (State.pump_on ? "ON" : "OFF"));
-        }
-
         function toggleLights() {
             State.lights_on = !State.lights_on;
             console.log("Lights " + (State.lights_on ? "ON" : "OFF"));
@@ -800,6 +885,7 @@
             console.log("Highest moisture reset to 0%");
         }
 
+        // FIXED: Set time using virtual time logic like ntp.ino
         function setTime() {
             const hour = parseInt(document.getElementById('setHour').value);
             const minute = parseInt(document.getElementById('setMinute').value);
@@ -809,7 +895,10 @@
             Config.manual_minute = minute;
             Config.manual_second = second;
             
-            manualBaseTime = Date.now() - (hour * ONE_HOUR + minute * ONE_MINUTE + second * ONE_SECOND);
+            // Like ntp.ino: state.manual_base = millis() - (h * ONE_HOUR + m * ONE_MINUTE + s * ONE_SECOND);
+            const currentVirtualTime = getCurrentVirtualTime();
+            State.manual_base = currentVirtualTime - (hour * ONE_HOUR + minute * ONE_MINUTE + second * ONE_SECOND);
+            
             console.log("Time set to " + hour + ":" + minute + ":" + second);
         }
 
@@ -834,7 +923,8 @@
                 Config.manual_minute = minutes;
                 Config.manual_second = seconds;
                 
-                manualBaseTime = Date.now() - (hours * ONE_HOUR + minutes * ONE_MINUTE + seconds * ONE_SECOND);
+                const currentVirtualTime = getCurrentVirtualTime();
+                State.manual_base = currentVirtualTime - (hours * ONE_HOUR + minutes * ONE_MINUTE + seconds * ONE_SECOND);
                 
                 syncBtn.disabled = false;
                 syncBtn.textContent = '🔄 Sync with NTP';
@@ -882,6 +972,9 @@
                 State.cached_times.lights_off_minute = lights_off_total_minutes % 60;
                 
                 State.cached_times.parsed = true;
+                document.getElementById('lightsOffTime').textContent = 
+                    State.cached_times.lights_off_hour.toString().padStart(2, '0') + ':' + 
+                    State.cached_times.lights_off_minute.toString().padStart(2, '0');
                 console.log(`Parsed times: Lights ON ${State.cached_times.lights_on_hour}:${State.cached_times.lights_on_minute}, Lights OFF ${State.cached_times.lights_off_hour}:${State.cached_times.lights_off_minute}`);
             }
         }
@@ -929,7 +1022,7 @@
             showNotification('Switched to AP mode', 'info');
         }
 
-        // FIXED: Chart generation matching Arduino getCachedChartData logic
+        // FIXED: Chart functions with virtual time like ntp.ino
         function refreshChart() {
             const timeRange = parseInt(document.getElementById('timeRange').value);
             const chartData = getChartData(timeRange);
@@ -942,41 +1035,50 @@
             }
             
             const history = [];
+            const currentVirtualTime = getCurrentVirtualTime();
+            const maxHoursAgo = timeRange;
             
-            // Replicate Arduino getHistoryDataJSON logic
+            // FIXED: Use virtual time for filtering like ntp.ino
             let pointsAdded = 0;
-            const skip = Math.max(1, Math.floor(HistoryData.HISTORY_SIZE / 50)); // Max 50 points
+            const skip = Math.max(1, Math.floor(HistoryData.HISTORY_SIZE / 50));
             
             for (let i = 0; i < HistoryData.HISTORY_SIZE && pointsAdded < 50; i++) {
-                const index = (HistoryData.current_index + i) % HistoryData.HISTORY_SIZE;
+                const index = (HistoryData.current_index - i - 1 + HistoryData.HISTORY_SIZE) % HistoryData.HISTORY_SIZE;
                 
                 if (HistoryData.timestamps[index] === 0 || HistoryData.moisture_values[index] <= 0) continue;
-                if (i % skip !== 0 && pointsAdded > 10) continue; // Skip some points after first 10
                 
-                const record_time = HistoryData.timestamps[index];
-                const total_millis = record_time - manualBaseTime;
+                const record_virtual_time = HistoryData.timestamps[index];
+                const hours_ago = safeTimeDifference(currentVirtualTime, record_virtual_time) / ONE_HOUR;
+                
+                // FIXED: Filter by virtual time
+                if (hours_ago > maxHoursAgo) continue;
+                if (i % skip !== 0 && pointsAdded > 10) continue;
+                
+                // FIXED: Convert virtual time to human time like ntp.ino
+                const total_millis = safeTimeDifference(record_virtual_time, State.manual_base);
                 const total_seconds = Math.floor(total_millis / 1000);
-                
                 const hours = Math.floor((total_seconds / 3600) % 24);
                 const minutes = Math.floor((total_seconds / 60) % 60);
                 const time_str = hours.toString().padStart(2, '0') + ':' + minutes.toString().padStart(2, '0');
-                
-                const time_diff = Date.now() - record_time;
-                const hours_ago = time_diff / ONE_HOUR;
                 
                 history.push({
                     hours_ago: hours_ago,
                     timestamp: time_str,
                     moisture: HistoryData.moisture_values[index],
-                    pwec: HistoryData.pwec_values[index]
+                    pwec: HistoryData.pwec_values[index],
+                    virtual_timestamp: record_virtual_time
                 });
                 
                 pointsAdded++;
             }
             
+            // FIXED: Sort by virtual time (oldest -> newest)
+            history.sort((a, b) => a.virtual_timestamp - b.virtual_timestamp);
+            
             const data = {
                 history: history,
-                target_moisture: Config.moisture_target
+                target_moisture: Config.moisture_target,
+                timeRange: timeRange
             };
             
             chartDataCache = {
@@ -987,16 +1089,15 @@
             return data;
         }
 
-        // FIXED: Exact replica of Arduino chart generation with tooltips and data points
+        // FIXED: Chart generation with virtual time positioning
         function generateChart(data) {
-            const timeRange = parseInt(document.getElementById('timeRange').value);
+            const timeRange = data.timeRange;
             const width = 600;
             const height = 350;
             const margin = { top: 20, right: 80, bottom: 60, left: 60 };
             const chartWidth = width - margin.left - margin.right;
             const chartHeight = height - margin.top - margin.bottom;
 
-            // Create SVG element
             const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             svg.setAttribute("width", width);
             svg.setAttribute("height", height);
@@ -1092,14 +1193,14 @@
             
             chart.appendChild(yAxisRight);
             
-            // X-axis with time labels
+            // FIXED: X-axis with virtual time labels
+            const timeLabels = generateVirtualTimeLabels(timeRange);
             const xAxis = document.createElementNS("http://www.w3.org/2000/svg", "g");
             xAxis.setAttribute("fill", "#888");
             xAxis.setAttribute("font-size", "10");
             xAxis.setAttribute("text-anchor", "middle");
             xAxis.setAttribute("transform", `translate(0,${chartHeight + 5})`);
             
-            const timeLabels = generateTimeLabelsFromData(data, timeRange);
             for (let i = 0; i <= 6; i++) {
                 const x = i * (chartWidth / 6);
                 const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -1137,13 +1238,14 @@
             targetLabel.textContent = `Target ${data.target_moisture}%`;
             chart.appendChild(targetLabel);
             
-            // Moisture line with data points and tooltips
+            // FIXED: Moisture line with virtual time positioning
             if (showMoistureLine && data.history && data.history.length > 0) {
                 const moisturePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
                 let moisturePathData = "M";
                 
                 for (let i = 0; i < data.history.length; i++) {
-                    const x = (data.history[i].hours_ago / timeRange) * chartWidth;
+                    // FIXED: Positioning based on virtual time
+                    const x = (1 - data.history[i].hours_ago / timeRange) * chartWidth;
                     const y = chartHeight * (1 - data.history[i].moisture / 100);
                     
                     if (i === 0) {
@@ -1162,7 +1264,7 @@
                 
                 // Moisture data points with tooltips
                 for (let i = 0; i < data.history.length; i += Math.max(1, Math.floor(data.history.length / 8))) {
-                    const x = (data.history[i].hours_ago / timeRange) * chartWidth;
+                    const x = (1 - data.history[i].hours_ago / timeRange) * chartWidth;
                     const moistureY = chartHeight * (1 - data.history[i].moisture / 100);
                     
                     const moisturePoint = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -1197,13 +1299,13 @@
                 }
             }
             
-            // PWEC line with data points and tooltips
+            // FIXED: PWEC line with virtual time positioning
             if (showPwecLine && data.history && data.history.length > 0) {
                 const pwecPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
                 let pwecPathData = "M";
                 
                 for (let i = 0; i < data.history.length; i++) {
-                    const x = (data.history[i].hours_ago / timeRange) * chartWidth;
+                    const x = (1 - data.history[i].hours_ago / timeRange) * chartWidth;
                     const y = chartHeight * (1 - data.history[i].pwec / 2.5);
                     
                     if (i === 0) {
@@ -1222,7 +1324,7 @@
                 
                 // PWEC data points with tooltips
                 for (let i = 0; i < data.history.length; i += Math.max(1, Math.floor(data.history.length / 8))) {
-                    const x = (data.history[i].hours_ago / timeRange) * chartWidth;
+                    const x = (1 - data.history[i].hours_ago / timeRange) * chartWidth;
                     const pwecY = chartHeight * (1 - data.history[i].pwec / 2.5);
                     
                     const pwecPoint = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -1265,41 +1367,26 @@
             container.appendChild(svg);
         }
 
-        function generateTimeLabelsFromData(data, timeRange) {
-            if (!data.history || data.history.length === 0) {
-                return ['00:00', '06:00', '12:00', '18:00', '23:59'];
-            }
-            
+        // FIXED: Generate time labels based on virtual system time like ntp.ino
+        function generateVirtualTimeLabels(timeRange) {
             const labels = [];
-            const now = new Date();
+            const currentVirtualTime = getCurrentVirtualTime();
             
-            // Use actual timestamps from data for more accurate labeling
             for (let i = 0; i <= 6; i++) {
-                const targetHoursAgo = (i * timeRange) / 6;
-                let closestTime = "";
-                let minDiff = Infinity;
+                const hoursAgo = (i * timeRange) / 6;
+                const targetVirtualTime = currentVirtualTime - (hoursAgo * ONE_HOUR);
                 
-                // Find the data point closest to this time position
-                data.history.forEach(point => {
-                    const diff = Math.abs(point.hours_ago - targetHoursAgo);
-                    if (diff < minDiff) {
-                        minDiff = diff;
-                        closestTime = point.timestamp;
-                    }
-                });
+                // FIXED: Convert virtual time to human time like ntp.ino
+                const total_millis = safeTimeDifference(targetVirtualTime, State.manual_base);
+                const total_seconds = Math.floor(total_millis / 1000);
+                const hours = Math.floor((total_seconds / 3600) % 24);
+                const minutes = Math.floor((total_seconds / 60) % 60);
                 
-                if (closestTime) {
-                    labels.push(closestTime);
-                } else {
-                    // Fallback: calculate time based on current time
-                    const time = new Date(now.getTime() - (targetHoursAgo * 3600000));
-                    const hours = time.getHours().toString().padStart(2, '0');
-                    const minutes = time.getMinutes().toString().padStart(2, '0');
-                    labels.push(`${hours}:${minutes}`);
-                }
+                labels.push(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
             }
             
-            return labels;
+            // Reverse so left is past, right is present
+            return labels.reverse();
         }
 
         function toggleChartLine(lineType) {
