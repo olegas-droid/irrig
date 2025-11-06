@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Irrigation Control System</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -465,31 +465,29 @@
         function generateInitialHistory() {
             const currentVirtualTime = getCurrentVirtualTime();
             
+            // Start from 24 hours ago
+            const startTime = currentVirtualTime - (24 * ONE_HOUR);
+            
             for (let i = 0; i < HistoryData.HISTORY_SIZE; i++) {
-                // Use virtual time like ntp.ino (millis-based)
-                const recordVirtualTime = currentVirtualTime - (24 * ONE_HOUR) + (i * 10 * ONE_MINUTE);
+                // Create evenly spaced points over 24 hours
+                const recordVirtualTime = startTime + (i * 10 * ONE_MINUTE);
                 
-                // Realistic moisture pattern with irrigation events
-                let moisture = 70 + Math.random() * 10;
+                // Realistic moisture pattern (60-90%)
+                let moisture = 70 + Math.sin(i * 0.2) * 15 + Math.random() * 5;
+                moisture = Math.max(60, Math.min(90, moisture));
                 
-                // Calculate virtual hour for realistic patterns
-                const total_millis = safeTimeDifference(recordVirtualTime, State.manual_base);
-                const total_seconds = Math.floor(total_millis / 1000);
-                const virtual_hour = (total_seconds / 3600) % 24;
-                
-                if (virtual_hour >= 10 && virtual_hour <= 18 && i % 8 === 0) {
-                    moisture = 85 + Math.random() * 5; // Irrigation spike
-                }
-                
-                // PWEC correlates with moisture
+                // Realistic PWEC
                 const pwec = (moisture / 100) * 1.5 + (Math.random() - 0.5) * 0.2;
                 
                 HistoryData.moisture_values[i] = moisture;
                 HistoryData.pwec_values[i] = pwec;
-                HistoryData.timestamps[i] = recordVirtualTime; // Store virtual time like ntp.ino
+                HistoryData.timestamps[i] = recordVirtualTime;
             }
+            
             HistoryData.current_index = HistoryData.HISTORY_SIZE - 1;
             HistoryData.last_record_time = currentVirtualTime;
+            
+            console.log("✅ Generated proper initial history with " + HistoryData.HISTORY_SIZE + " points");
         }
 
         function updateSensors() {
@@ -1029,38 +1027,34 @@
             generateChart(chartData);
         }
 
+        // ********** REPLACED getChartData: now mirrors firmware (ntp.ino) logic exactly **********
         function getChartData(timeRange) {
             if (chartDataCache && chartDataCache.timeRange === timeRange) {
                 return chartDataCache.data;
             }
-            
+
             const history = [];
             const currentVirtualTime = getCurrentVirtualTime();
             const maxHoursAgo = timeRange;
-            
-            // FIXED: Use virtual time for filtering like ntp.ino
-            let pointsAdded = 0;
-            const skip = Math.max(1, Math.floor(HistoryData.HISTORY_SIZE / 50));
-            
-            for (let i = 0; i < HistoryData.HISTORY_SIZE && pointsAdded < 50; i++) {
-                const index = (HistoryData.current_index - i - 1 + HistoryData.HISTORY_SIZE) % HistoryData.HISTORY_SIZE;
+
+            // CORRECT: Read history in chronological order (oldest to newest)
+            // Start from the oldest data and move forward
+            for (let i = 0; i < HistoryData.HISTORY_SIZE; i++) {
+                const index = (HistoryData.current_index + 1 + i) % HistoryData.HISTORY_SIZE;
                 
                 if (HistoryData.timestamps[index] === 0 || HistoryData.moisture_values[index] <= 0) continue;
-                
+
                 const record_virtual_time = HistoryData.timestamps[index];
                 const hours_ago = safeTimeDifference(currentVirtualTime, record_virtual_time) / ONE_HOUR;
-                
-                // FIXED: Filter by virtual time
                 if (hours_ago > maxHoursAgo) continue;
-                if (i % skip !== 0 && pointsAdded > 10) continue;
-                
-                // FIXED: Convert virtual time to human time like ntp.ino
+
+                // Convert to display time
                 const total_millis = safeTimeDifference(record_virtual_time, State.manual_base);
                 const total_seconds = Math.floor(total_millis / 1000);
                 const hours = Math.floor((total_seconds / 3600) % 24);
                 const minutes = Math.floor((total_seconds / 60) % 60);
                 const time_str = hours.toString().padStart(2, '0') + ':' + minutes.toString().padStart(2, '0');
-                
+
                 history.push({
                     hours_ago: hours_ago,
                     timestamp: time_str,
@@ -1068,28 +1062,21 @@
                     pwec: HistoryData.pwec_values[index],
                     virtual_timestamp: record_virtual_time
                 });
-                
-                pointsAdded++;
             }
-            
-            // FIXED: Sort by virtual time (oldest -> newest)
-            history.sort((a, b) => a.virtual_timestamp - b.virtual_timestamp);
-            
+
+            // Data is now in correct chronological order - NO SORTING NEEDED
             const data = {
                 history: history,
                 target_moisture: Config.moisture_target,
                 timeRange: timeRange
             };
-            
-            chartDataCache = {
-                timeRange: timeRange,
-                data: data
-            };
-            
+
+            chartDataCache = { timeRange: timeRange, data: data };
             return data;
         }
+        // ********** end replaced getChartData **********
 
-        // FIXED: Chart generation with virtual time positioning
+        // FIXED: Chart generation with virtual time positioning (unchanged logic)
         function generateChart(data) {
             const timeRange = data.timeRange;
             const width = 600;
@@ -1244,7 +1231,7 @@
                 let moisturePathData = "M";
                 
                 for (let i = 0; i < data.history.length; i++) {
-                    // FIXED: Positioning based on virtual time
+                    // Positioning based on hours_ago (firmware supplies hours_ago)
                     const x = (1 - data.history[i].hours_ago / timeRange) * chartWidth;
                     const y = chartHeight * (1 - data.history[i].moisture / 100);
                     
