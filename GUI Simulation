@@ -447,6 +447,7 @@
             updateVirtualTime();
             generateInitialHistory();
             parseAndCacheTimes();
+            Config.service_mode = true;
             
             setInterval(updateVirtualTime, 100);
             setInterval(updateSensors, 2000);
