@@ -335,18 +335,15 @@
     <div id="chartTooltip" class="chart-tooltip"></div>
 
     <script>
-        // Constants - identical to ntp.ino
         const ONE_SECOND = 1000;
         const ONE_MINUTE = 60000;
         const ONE_HOUR = 3600000;
         const ONE_DAY = 86400000;
         const HISTORY_INTERVAL = 10 * ONE_MINUTE;
 
-        // FIXED: Arduino-like time emulation
-        let deviceBootTime = Date.now();      // When simulation started (like Arduino boot)
-        let virtualMillis = 0;               // Analog of millis() in Arduino
+        let deviceBootTime = Date.now();
+        let virtualMillis = 0;
 
-        // Exact replica of Arduino data structures
         const Config = {
             moisture_target: 85.0,
             p1_dryback: 0.0,
@@ -360,7 +357,7 @@
             delay_after: 1.0,
             epsilon_offset: 4.1,
             maintenance: false,
-            service_mode: false,
+            service_mode: true,
             lights_on_time: "09:00:00",
             manual_hour: 12,
             manual_minute: 0,
@@ -383,7 +380,7 @@
             pump_on: false,
             lights_on: false,
             last_irrigation: null,
-            manual_base: 12 * ONE_HOUR, // Initial offset like in ntp.ino
+            manual_base: 12 * ONE_HOUR,
             days_base: 0,
             current_time: "--:--:--",
             wifi_status: "AP: Irrigation_System",
@@ -405,49 +402,41 @@
             }
         };
 
-        // History data matching Arduino structure
         const HistoryData = {
             HISTORY_SIZE: 144,
             moisture_values: new Array(144).fill(0),
             pwec_values: new Array(144).fill(0),
-            timestamps: new Array(144).fill(0), // Will store virtualMillis like ntp.ino
+            timestamps: new Array(144).fill(0),
             current_index: 0,
             last_record_time: 0
         };
 
-        // Simulation state
         let chartDataCache = null;
         let showMoistureLine = true;
         let showPwecLine = true;
         let lastResetDay = -1;
 
-        // FIXED: Manual watering session tracking
         let manualWateringSession = {
             active: false,
             start_time: null
         };
 
-        // FIXED: Arduino-like safe time difference
         function safeTimeDifference(current, previous) {
             return (current >= previous) ? (current - previous) : (Number.MAX_SAFE_INTEGER - previous + current + 1);
         }
 
-        // FIXED: Update virtual time (like Arduino loop)
         function updateVirtualTime() {
             virtualMillis = Date.now() - deviceBootTime;
         }
 
-        // FIXED: Get current virtual time (like in ntp.ino)
         function getCurrentVirtualTime() {
             return virtualMillis;
         }
 
-        // Initialize system
         function initializeSystem() {
             updateVirtualTime();
             generateInitialHistory();
             parseAndCacheTimes();
-            Config.service_mode = true;
             
             setInterval(updateVirtualTime, 100);
             setInterval(updateSensors, 2000);
@@ -462,22 +451,17 @@
             refreshChart();
         }
 
-        // FIXED: Generate history with virtual timestamps like ntp.ino
         function generateInitialHistory() {
             const currentVirtualTime = getCurrentVirtualTime();
             
-            // Start from 24 hours ago
             const startTime = currentVirtualTime - (24 * ONE_HOUR);
             
             for (let i = 0; i < HistoryData.HISTORY_SIZE; i++) {
-                // Create evenly spaced points over 24 hours
                 const recordVirtualTime = startTime + (i * 10 * ONE_MINUTE);
                 
-                // Realistic moisture pattern (60-90%)
                 let moisture = 70 + Math.sin(i * 0.2) * 15 + Math.random() * 5;
                 moisture = Math.max(60, Math.min(90, moisture));
                 
-                // Realistic PWEC
                 const pwec = (moisture / 100) * 1.5 + (Math.random() - 0.5) * 0.2;
                 
                 HistoryData.moisture_values[i] = moisture;
@@ -487,12 +471,9 @@
             
             HistoryData.current_index = HistoryData.HISTORY_SIZE - 1;
             HistoryData.last_record_time = currentVirtualTime;
-            
-            console.log("✅ Generated proper initial history with " + HistoryData.HISTORY_SIZE + " points");
         }
 
         function updateSensors() {
-            // FIXED: Use virtual time for sensor updates
             const currentVirtualTime = getCurrentVirtualTime();
             
             if (State.pump_on) {
@@ -501,7 +482,6 @@
                 State.soil_moisture = Math.max(15, State.soil_moisture - (0.05 + Math.random() * 0.05));
             }
             
-            // Use virtual time for temperature patterns
             const total_millis = safeTimeDifference(currentVirtualTime, State.manual_base);
             const total_seconds = Math.floor(total_millis / 1000);
             const virtual_hour = (total_seconds / 3600) % 24;
@@ -541,7 +521,6 @@
             State.pore_ec = Math.max(0, Math.min(30.0, State.pore_ec));
         }
 
-        // FIXED: Use virtual time for irrigation logic
         function updateIrrigationLogic() {
             if (Config.service_mode || State.watering.active || manualWateringSession.active) return;
             
@@ -555,7 +534,6 @@
             const moisture_diff = Config.moisture_target - State.soil_moisture;
             
             if (moisture_diff > Config.max_dryback) {
-                console.log("EMERGENCY Watering - Max dryback exceeded");
                 startWatering(Config.p2_shot);
                 return;
             }
@@ -565,17 +543,14 @@
             if (in_window) {
                 if (!Config.maintenance) {
                     if (moisture_diff > Config.p1_dryback) {
-                        console.log("P1 Watering - Normal phase");
                         startWatering(Config.p1_shot);
                     }
                     else if (State.highest_moisture >= Config.moisture_target) {
                         Config.maintenance = true;
-                        console.log("Switched to Maintenance (P2) phase");
                     }
                 }
                 else {
                     if (moisture_diff > Config.p2_dryback) {
-                        console.log("P2 Watering - Maintenance phase");
                         startWatering(Config.p2_shot);
                     }
                 }
@@ -583,7 +558,6 @@
             else {
                 if (Config.maintenance) {
                     Config.maintenance = false;
-                    console.log("Reset to P1 Phase - Outside irrigation window");
                 }
             }
         }
@@ -600,8 +574,6 @@
             State.current_session_water = 0;
             State.pump_on = true;
             State.last_irrigation = currentVirtualTime;
-            
-            console.log(`Watering started: ${seconds} seconds`);
         }
 
         function stopWatering() {
@@ -615,11 +587,8 @@
             State.current_session_water = 0;
             State.watering.active = false;
             State.pump_on = false;
-            
-            console.log(`Watering completed. Water used: ${session_water.toFixed(1)} L`);
         }
 
-        // FIXED: Manual pump control with virtual time
         function togglePump() {
             if (State.pump_on) {
                 if (State.watering.active) {
@@ -641,8 +610,6 @@
             State.current_session_water = 0;
             State.pump_on = true;
             State.last_irrigation = currentVirtualTime;
-            
-            console.log("Manual watering started");
         }
 
         function stopManualWatering() {
@@ -656,8 +623,6 @@
             State.current_session_water = 0;
             manualWateringSession.active = false;
             State.pump_on = false;
-            
-            console.log(`Manual watering stopped. Water used: ${session_water.toFixed(1)} L`);
         }
 
         function updateWatering() {
@@ -691,11 +656,9 @@
             const should_be_on = isLightTime();
             if (should_be_on !== State.lights_on) {
                 State.lights_on = should_be_on;
-                console.log("Lights " + (should_be_on ? "ON" : "OFF"));
             }
         }
 
-        // FIXED: Time update using virtual time like ntp.ino
         function updateTime() {
             const currentVirtualTime = getCurrentVirtualTime();
             const total_millis = safeTimeDifference(currentVirtualTime, State.manual_base);
@@ -712,34 +675,29 @@
             
             State.virtual_day = Math.floor(safeTimeDifference(currentVirtualTime, State.days_base) / ONE_DAY);
             
-            // FIXED: Daily reset using virtual time
             if (hours === State.cached_times.lights_on_hour && 
                 minutes === State.cached_times.lights_on_minute && 
                 State.virtual_day !== lastResetDay) {
                 State.highest_moisture = 0;
                 State.daily_water_applied = 0;
                 lastResetDay = State.virtual_day;
-                console.log("Daily reset - moisture & water cleared");
             }
             
             updateUI();
         }
 
-        // FIXED: History update with virtual time
         function updateHistory() {
             const currentVirtualTime = getCurrentVirtualTime();
             
             if (safeTimeDifference(currentVirtualTime, HistoryData.last_record_time) >= HISTORY_INTERVAL) {
                 HistoryData.moisture_values[HistoryData.current_index] = State.soil_moisture;
                 HistoryData.pwec_values[HistoryData.current_index] = State.pore_ec;
-                HistoryData.timestamps[HistoryData.current_index] = currentVirtualTime; // Store virtual time
+                HistoryData.timestamps[HistoryData.current_index] = currentVirtualTime;
                 
                 HistoryData.current_index = (HistoryData.current_index + 1) % HistoryData.HISTORY_SIZE;
                 HistoryData.last_record_time = currentVirtualTime;
                 
                 chartDataCache = null;
-                
-                console.log(`Recorded - Moisture: ${State.soil_moisture.toFixed(1)}%, PWEC: ${State.pore_ec.toFixed(3)}`);
             }
         }
 
@@ -852,7 +810,6 @@
             }, 3000);
         }
 
-        // Web interface handlers
         function openTab(tabName) {
             document.querySelectorAll('.tabcontent').forEach(tab => tab.style.display = 'none');
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
@@ -863,28 +820,23 @@
 
         function toggleLights() {
             State.lights_on = !State.lights_on;
-            console.log("Lights " + (State.lights_on ? "ON" : "OFF"));
         }
 
         function toggleService() {
             Config.service_mode = !Config.service_mode;
-            console.log("Service Mode: " + (Config.service_mode ? "ON" : "OFF"));
         }
 
         function setHighestMoisture() {
             const value = parseFloat(document.getElementById('setHighestValue').value);
             if (!isNaN(value)) {
                 State.highest_moisture = value;
-                console.log("Highest moisture set to " + value + "%");
             }
         }
 
         function resetHighestMoisture() {
             State.highest_moisture = 0;
-            console.log("Highest moisture reset to 0%");
         }
 
-        // FIXED: Set time using virtual time logic like ntp.ino
         function setTime() {
             const hour = parseInt(document.getElementById('setHour').value);
             const minute = parseInt(document.getElementById('setMinute').value);
@@ -894,11 +846,8 @@
             Config.manual_minute = minute;
             Config.manual_second = second;
             
-            // Like ntp.ino: state.manual_base = millis() - (h * ONE_HOUR + m * ONE_MINUTE + s * ONE_SECOND);
             const currentVirtualTime = getCurrentVirtualTime();
             State.manual_base = currentVirtualTime - (hour * ONE_HOUR + minute * ONE_MINUTE + second * ONE_SECOND);
-            
-            console.log("Time set to " + hour + ":" + minute + ":" + second);
         }
 
         function syncTime() {
@@ -928,7 +877,6 @@
                 syncBtn.disabled = false;
                 syncBtn.textContent = '🔄 Sync with NTP';
                 showNotification('Time synced successfully!', 'success');
-                console.log("Time synced to NTP: " + hours + ":" + minutes + ":" + seconds);
             }, 2000);
         }
 
@@ -974,7 +922,6 @@
                 document.getElementById('lightsOffTime').textContent = 
                     State.cached_times.lights_off_hour.toString().padStart(2, '0') + ':' + 
                     State.cached_times.lights_off_minute.toString().padStart(2, '0');
-                console.log(`Parsed times: Lights ON ${State.cached_times.lights_on_hour}:${State.cached_times.lights_on_minute}, Lights OFF ${State.cached_times.lights_off_hour}:${State.cached_times.lights_off_minute}`);
             }
         }
 
@@ -1021,14 +968,12 @@
             showNotification('Switched to AP mode', 'info');
         }
 
-        // FIXED: Chart functions with virtual time like ntp.ino
         function refreshChart() {
             const timeRange = parseInt(document.getElementById('timeRange').value);
             const chartData = getChartData(timeRange);
             generateChart(chartData);
         }
 
-        // ********** REPLACED getChartData: now mirrors firmware (ntp.ino) logic exactly **********
         function getChartData(timeRange) {
             if (chartDataCache && chartDataCache.timeRange === timeRange) {
                 return chartDataCache.data;
@@ -1038,8 +983,6 @@
             const currentVirtualTime = getCurrentVirtualTime();
             const maxHoursAgo = timeRange;
 
-            // CORRECT: Read history in chronological order (oldest to newest)
-            // Start from the oldest data and move forward
             for (let i = 0; i < HistoryData.HISTORY_SIZE; i++) {
                 const index = (HistoryData.current_index + 1 + i) % HistoryData.HISTORY_SIZE;
                 
@@ -1049,7 +992,6 @@
                 const hours_ago = safeTimeDifference(currentVirtualTime, record_virtual_time) / ONE_HOUR;
                 if (hours_ago > maxHoursAgo) continue;
 
-                // Convert to display time
                 const total_millis = safeTimeDifference(record_virtual_time, State.manual_base);
                 const total_seconds = Math.floor(total_millis / 1000);
                 const hours = Math.floor((total_seconds / 3600) % 24);
@@ -1065,7 +1007,6 @@
                 });
             }
 
-            // Data is now in correct chronological order - NO SORTING NEEDED
             const data = {
                 history: history,
                 target_moisture: Config.moisture_target,
@@ -1075,9 +1016,7 @@
             chartDataCache = { timeRange: timeRange, data: data };
             return data;
         }
-        // ********** end replaced getChartData **********
 
-        // FIXED: Chart generation with virtual time positioning (unchanged logic)
         function generateChart(data) {
             const timeRange = data.timeRange;
             const width = 600;
@@ -1096,12 +1035,10 @@
             const chart = document.createElementNS("http://www.w3.org/2000/svg", "g");
             chart.setAttribute("transform", `translate(${margin.left},${margin.top})`);
             
-            // Grid
             const grid = document.createElementNS("http://www.w3.org/2000/svg", "g");
             grid.setAttribute("stroke", "#333");
             grid.setAttribute("stroke-width", "1");
             
-            // Horizontal grid lines
             for (let i = 0; i <= 4; i++) {
                 const y = i * (chartHeight / 4);
                 const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -1112,7 +1049,6 @@
                 grid.appendChild(line);
             }
             
-            // Vertical grid lines
             for (let i = 0; i <= 6; i++) {
                 const x = i * (chartWidth / 6);
                 const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -1125,7 +1061,6 @@
             
             chart.appendChild(grid);
             
-            // Left Y-axis (Moisture)
             const yAxisLeft = document.createElementNS("http://www.w3.org/2000/svg", "g");
             yAxisLeft.setAttribute("fill", "#3498db");
             yAxisLeft.setAttribute("font-size", "10");
@@ -1153,7 +1088,6 @@
             
             chart.appendChild(yAxisLeft);
             
-            // Right Y-axis (PWEC)
             const yAxisRight = document.createElementNS("http://www.w3.org/2000/svg", "g");
             yAxisRight.setAttribute("fill", "#2ecc71");
             yAxisRight.setAttribute("font-size", "10");
@@ -1181,7 +1115,6 @@
             
             chart.appendChild(yAxisRight);
             
-            // FIXED: X-axis with virtual time labels
             const timeLabels = generateVirtualTimeLabels(timeRange);
             const xAxis = document.createElementNS("http://www.w3.org/2000/svg", "g");
             xAxis.setAttribute("fill", "#888");
@@ -1209,7 +1142,6 @@
             
             chart.appendChild(xAxis);
             
-            // Target moisture line
             const targetLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
             targetLine.setAttribute("class", "target-line");
             targetLine.setAttribute("x1", "0");
@@ -1226,13 +1158,11 @@
             targetLabel.textContent = `Target ${data.target_moisture}%`;
             chart.appendChild(targetLabel);
             
-            // FIXED: Moisture line with virtual time positioning
             if (showMoistureLine && data.history && data.history.length > 0) {
                 const moisturePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
                 let moisturePathData = "M";
                 
                 for (let i = 0; i < data.history.length; i++) {
-                    // Positioning based on hours_ago (firmware supplies hours_ago)
                     const x = (1 - data.history[i].hours_ago / timeRange) * chartWidth;
                     const y = chartHeight * (1 - data.history[i].moisture / 100);
                     
@@ -1250,7 +1180,6 @@
                 moisturePath.setAttribute("opacity", showMoistureLine ? "1" : "0.3");
                 chart.appendChild(moisturePath);
                 
-                // Moisture data points with tooltips
                 for (let i = 0; i < data.history.length; i += Math.max(1, Math.floor(data.history.length / 8))) {
                     const x = (1 - data.history[i].hours_ago / timeRange) * chartWidth;
                     const moistureY = chartHeight * (1 - data.history[i].moisture / 100);
@@ -1287,7 +1216,6 @@
                 }
             }
             
-            // FIXED: PWEC line with virtual time positioning
             if (showPwecLine && data.history && data.history.length > 0) {
                 const pwecPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
                 let pwecPathData = "M";
@@ -1310,7 +1238,6 @@
                 pwecPath.setAttribute("opacity", showPwecLine ? "1" : "0.3");
                 chart.appendChild(pwecPath);
                 
-                // PWEC data points with tooltips
                 for (let i = 0; i < data.history.length; i += Math.max(1, Math.floor(data.history.length / 8))) {
                     const x = (1 - data.history[i].hours_ago / timeRange) * chartWidth;
                     const pwecY = chartHeight * (1 - data.history[i].pwec / 2.5);
@@ -1349,13 +1276,11 @@
             
             svg.appendChild(chart);
             
-            // Clear and add new chart
             const container = document.getElementById('chartContainer');
             container.innerHTML = '';
             container.appendChild(svg);
         }
 
-        // FIXED: Generate time labels based on virtual system time like ntp.ino
         function generateVirtualTimeLabels(timeRange) {
             const labels = [];
             const currentVirtualTime = getCurrentVirtualTime();
@@ -1364,7 +1289,6 @@
                 const hoursAgo = (i * timeRange) / 6;
                 const targetVirtualTime = currentVirtualTime - (hoursAgo * ONE_HOUR);
                 
-                // FIXED: Convert virtual time to human time like ntp.ino
                 const total_millis = safeTimeDifference(targetVirtualTime, State.manual_base);
                 const total_seconds = Math.floor(total_millis / 1000);
                 const hours = Math.floor((total_seconds / 3600) % 24);
@@ -1373,7 +1297,6 @@
                 labels.push(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
             }
             
-            // Reverse so left is past, right is present
             return labels.reverse();
         }
 
@@ -1388,12 +1311,10 @@
             refreshChart();
         }
 
-        // Initialize event listeners and system
         document.getElementById('pumpBtn').addEventListener('click', togglePump);
         document.getElementById('lightsBtn').addEventListener('click', toggleLights);
         document.getElementById('serviceBtn').addEventListener('click', toggleService);
 
-        // Initialize the system when page loads
         window.addEventListener('load', initializeSystem);
     </script>
 </body>
